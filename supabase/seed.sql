@@ -1,0 +1,1 @@
+-- goal_templates seed data (Phase 2)
