@@ -4,16 +4,16 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+const DEFAULT_TIMEZONE = "America/Denver";
+
 const TIMEZONES = Intl.supportedValuesOf
   ? Intl.supportedValuesOf("timeZone")
-  : ["America/Denver"];
+  : [DEFAULT_TIMEZONE];
 
 export function AcceptInviteForm({ token }: { token: string }) {
   const router = useRouter();
   const [fullName, setFullName] = useState("");
-  const [timezone, setTimezone] = useState(
-    Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Denver",
-  );
+  const [timezone, setTimezone] = useState(DEFAULT_TIMEZONE);
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
 
