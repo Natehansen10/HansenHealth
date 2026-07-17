@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { triggerTargetSnapshot } from "@/lib/actions/goals";
 import { Button } from "@/components/ui/button";
 
 type Template = {
@@ -70,6 +71,8 @@ export function NewGoalForm({ templates }: { templates: Template[] }) {
       setErrorMessage(error.message);
       return;
     }
+
+    await triggerTargetSnapshot();
 
     router.push("/goals");
     router.refresh();
