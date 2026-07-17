@@ -3,8 +3,8 @@
 Web app for a family to track exercise goals together: set goals, check in,
 see everyone's progress, react, comment, win a monthly prize.
 
-## Status (updated end of Phase 5)
-Phases 1-5 complete and manually verified against the live hosted Supabase
+## Status (updated end of Phase 6)
+Phases 1-6 complete and manually verified against the live hosted Supabase
 project. See `family-health-tracker-build-plan.md` for the full roadmap.
 - **Phase 1**: schema, RLS, email magic-link auth, invite-only join flow.
   Google OAuth deferred (not yet built).
@@ -24,8 +24,12 @@ project. See `family-health-tracker-build-plan.md` for the full roadmap.
   `checkins`/`reactions`/`comments`. End-to-end tested: real check-in →
   push + email both delivered. See Security section below for the
   auth-boundary and secret-exposure notes specific to this phase.
-- **Next: Phase 6** — `monthly-prize-calculation` Edge Function on cron,
-  prize history screen, current-month standings.
+- **Phase 6**: `monthly-prize-calculation` Edge Function (cron, 1st of
+  month at 00:15 UTC), `/prizes` screen with current-month standings and
+  prize history. End-to-end tested: a synthetic 100%-month scenario
+  correctly awarded and displayed a prize, then was cleaned up.
+- **Next: Phase 7** — mobile-first responsive pass, empty states, error
+  handling, loading states, production deploy checklist.
 
 ## Environment
 - **No local Docker** in this dev environment. `supabase db reset`,
@@ -117,6 +121,18 @@ project. See `family-health-tracker-build-plan.md` for the full roadmap.
   resolves as the domain builds sending reputation. The optional DMARC
   record Cloudflare/Resend offered was skipped (only SPF/DKIM were
   added) — consider adding it if spam placement doesn't improve.
+- `monthly-prize-calculation` (Phase 6) imports `lib/utils/progress.ts`
+  directly via a cross-directory relative import
+  (`../../../lib/utils/progress.ts`), rather than duplicating the
+  formula into `supabase/functions/_shared/`. This was empirically
+  confirmed to work — `supabase functions deploy` bundles the imported
+  file automatically, no `--use-api` flag or `_shared/` convention
+  needed — but it's only safe because `progress.ts` is pure, zero-import
+  TypeScript with no Node-specific APIs and no secrets. Before reusing
+  this pattern for any other `lib/` file, manually confirm it has zero
+  transitive dependencies (no `next/headers`, no `server-only`, no env
+  reads) — otherwise the Edge Function bundle could pull in server-only
+  Next.js code or fail confusingly under Deno.
 
 ## Commands
 - `npm run dev` — local dev server

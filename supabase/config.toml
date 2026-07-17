@@ -435,3 +435,12 @@ entrypoint = "./functions/notify-activity/index.ts"
 # keeps the wiring in a migration instead of undeclared dashboard state.
 # Uses "secret" auth mode like monthly-target-snapshot, so the trigger's
 # net.http_post call sends `apikey: <service_role_key>` (from Vault).
+
+[functions.monthly-prize-calculation]
+enabled = true
+verify_jwt = false
+import_map = "./functions/monthly-prize-calculation/deno.json"
+entrypoint = "./functions/monthly-prize-calculation/index.ts"
+# Cron on the 1st of the month at 00:15 UTC, evaluating the prior month
+# (see the cron migration). Uses "secret" auth mode like the other two
+# functions -- service role only, never reachable from a browser.
