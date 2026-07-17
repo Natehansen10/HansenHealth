@@ -1,0 +1,20 @@
+// Standard boilerplate for converting a base64url VAPID public key (as
+// produced by `web-push generate-vapid-keys`) into the Uint8Array shape
+// the Push API's `applicationServerKey` expects.
+export function urlBase64ToUint8Array(
+  base64String: string,
+): Uint8Array<ArrayBuffer> {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, "+")
+    .replace(/_/g, "/");
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(new ArrayBuffer(rawData.length));
+
+  for (let i = 0; i < rawData.length; i++) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+
+  return outputArray;
+}

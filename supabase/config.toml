@@ -423,3 +423,15 @@ entrypoint = "./functions/monthly-target-snapshot/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/monthly-target-snapshot/*.html" ]
+
+[functions.notify-activity]
+enabled = true
+verify_jwt = false
+import_map = "./functions/notify-activity/deno.json"
+entrypoint = "./functions/notify-activity/index.ts"
+# Invoked by AFTER INSERT triggers on checkins/reactions/comments
+# (notify_activity_webhook(), migration 20260717000006) via pg_net,
+# rather than Supabase's dashboard-configured Database Webhooks UI -- this
+# keeps the wiring in a migration instead of undeclared dashboard state.
+# Uses "secret" auth mode like monthly-target-snapshot, so the trigger's
+# net.http_post call sends `apikey: <service_role_key>` (from Vault).

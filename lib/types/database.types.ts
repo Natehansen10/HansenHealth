@@ -332,27 +332,33 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          email_enabled: boolean
           family_id: string | null
           full_name: string
           id: string
+          push_enabled: boolean
           role: string
           timezone: string
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          email_enabled?: boolean
           family_id?: string | null
           full_name: string
           id: string
+          push_enabled?: boolean
           role?: string
           timezone?: string
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
+          email_enabled?: boolean
           family_id?: string | null
           full_name?: string
           id?: string
+          push_enabled?: boolean
           role?: string
           timezone?: string
         }

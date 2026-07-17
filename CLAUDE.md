@@ -3,8 +3,8 @@
 Web app for a family to track exercise goals together: set goals, check in,
 see everyone's progress, react, comment, win a monthly prize.
 
-## Status (updated end of Phase 4)
-Phases 1-4 complete and manually verified against the live hosted Supabase
+## Status (updated end of Phase 5)
+Phases 1-5 complete and manually verified against the live hosted Supabase
 project. See `family-health-tracker-build-plan.md` for the full roadmap.
 - **Phase 1**: schema, RLS, email magic-link auth, invite-only join flow.
   Google OAuth deferred (not yet built).
@@ -16,8 +16,16 @@ project. See `family-health-tracker-build-plan.md` for the full roadmap.
 - **Phase 4**: dashboard with per-member summary bars (expandable to
   per-goal detail), live activity feed, likes, comments, `/family/[userId]`
   detail view. Realtime enabled on `checkins`/`reactions`/`comments`.
-- **Next: Phase 5** — web push (VAPID + service worker), email (Resend),
-  `notify-activity` Edge Function on DB webhook.
+- **Phase 5**: notification preferences (`push_enabled`/`email_enabled`
+  on `profiles`, opt-out defaults), web push (VAPID keypair, service
+  worker at `public/sw.js`, subscribe/unsubscribe flow at `/settings`),
+  email via Resend (`lydiaclarkhansen.com` verified sending domain),
+  `notify-activity` Edge Function fired by `AFTER INSERT` triggers on
+  `checkins`/`reactions`/`comments`. End-to-end tested: real check-in →
+  push + email both delivered. See Security section below for the
+  auth-boundary and secret-exposure notes specific to this phase.
+- **Next: Phase 6** — `monthly-prize-calculation` Edge Function on cron,
+  prize history screen, current-month standings.
 
 ## Environment
 - **No local Docker** in this dev environment. `supabase db reset`,
@@ -79,6 +87,36 @@ project. See `family-health-tracker-build-plan.md` for the full roadmap.
   client-side as defense-in-depth, in addition to whatever server-side
   enforcement Realtime provides. Revisit if a second family ever exists
   to test against.
+- `notify-activity` (Phase 5) is invoked via `AFTER INSERT` triggers on
+  `checkins`/`reactions`/`comments` (`notify_activity_webhook()`,
+  migration `20260717000006`) rather than Supabase's dashboard-configured
+  Database Webhooks UI, so the wiring lives in a migration, not
+  undeclared dashboard state. This means the live service role key (from
+  Vault) is read into a `security definer` function and sent as an
+  `apikey` header on every single check-in/reaction/comment insert, not
+  just once a day like the `monthly-target-snapshot` cron job — a
+  deliberate, reviewed tradeoff (the function can't be invoked directly;
+  Postgres refuses to call a `returns trigger` function outside trigger
+  context), but it does mean the secret transits pg_net's internal queue
+  tables far more often. Revisit if pg_net's internal tables (`net.*`)
+  are ever exposed to a broader set of roles.
+- The `notify-activity` Edge Function itself is deployed with
+  `verify_jwt = false` (see `supabase/config.toml`) — there is no
+  platform-level auth backstop, so its own `apikey`-header check (via
+  `withSupabase({ auth: ["secret"] })`) is the only thing standing
+  between it and the public internet. This was empirically curl-tested
+  (no key / garbage key / anon key all get 401; only the real service
+  role key succeeds) before the webhook was wired up. Re-verify this
+  after any change to how the function is deployed or to the
+  `@supabase/server` package version.
+- Resend sending domain (`lydiaclarkhansen.com`, a domain already used
+  for an unrelated existing site, verified via Cloudflare DNS under the
+  root domain rather than a subdomain) is brand new with no sending
+  history, so early `notify-activity` emails land in recipients' spam
+  folders — confirmed in first end-to-end test. Not a code issue;
+  resolves as the domain builds sending reputation. The optional DMARC
+  record Cloudflare/Resend offered was skipped (only SPF/DKIM were
+  added) — consider adding it if spam placement doesn't improve.
 
 ## Commands
 - `npm run dev` — local dev server
