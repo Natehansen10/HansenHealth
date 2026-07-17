@@ -55,7 +55,7 @@ export function LikeButton({
       type="button"
       onClick={handleToggle}
       disabled={busy}
-      className={`text-sm ${likedByMe ? "text-red-600" : "text-zinc-500"} hover:text-red-600 disabled:opacity-50`}
+      className={`text-sm ${likedByMe ? "text-red-600" : "text-muted"} hover:text-red-600 disabled:opacity-50`}
     >
       {likedByMe ? "♥" : "♡"} {likeCount > 0 ? likeCount : ""}
     </button>

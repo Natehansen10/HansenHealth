@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { BlueprintCorners } from "@/components/ui/blueprint-corners";
+import { Button } from "@/components/ui/button";
 
 const DEFAULT_TIMEZONE = "America/Denver";
 
@@ -42,13 +44,14 @@ export function CreateFamilyForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="w-full max-w-sm rounded-lg border border-zinc-200 bg-white p-6"
+      className="blueprint w-full max-w-sm border border-divider bg-transparent p-6"
     >
-      <h1 className="mb-4 text-xl font-semibold text-zinc-900">
+      <BlueprintCorners />
+      <h1 className="mb-4 text-xl font-semibold text-foreground">
         Create your family
       </h1>
 
-      <label htmlFor="fullName" className="mb-1 block text-sm text-zinc-600">
+      <label htmlFor="fullName" className="mb-1 block text-sm text-muted">
         Your name
       </label>
       <input
@@ -56,14 +59,11 @@ export function CreateFamilyForm() {
         required
         value={fullName}
         onChange={(e) => setFullName(e.target.value)}
-        className="mb-4 w-full rounded-md border border-zinc-300 px-3 py-2 text-zinc-900 focus:border-zinc-500 focus:outline-none"
+        className="input mb-4 w-full"
         placeholder="Jamie Smith"
       />
 
-      <label
-        htmlFor="familyName"
-        className="mb-1 block text-sm text-zinc-600"
-      >
+      <label htmlFor="familyName" className="mb-1 block text-sm text-muted">
         Family name
       </label>
       <input
@@ -71,18 +71,18 @@ export function CreateFamilyForm() {
         required
         value={familyName}
         onChange={(e) => setFamilyName(e.target.value)}
-        className="mb-4 w-full rounded-md border border-zinc-300 px-3 py-2 text-zinc-900 focus:border-zinc-500 focus:outline-none"
+        className="input mb-4 w-full"
         placeholder="The Smith Family"
       />
 
-      <label htmlFor="timezone" className="mb-1 block text-sm text-zinc-600">
+      <label htmlFor="timezone" className="mb-1 block text-sm text-muted">
         Timezone
       </label>
       <select
         id="timezone"
         value={timezone}
         onChange={(e) => setTimezone(e.target.value)}
-        className="mb-4 w-full rounded-md border border-zinc-300 px-3 py-2 text-zinc-900 focus:border-zinc-500 focus:outline-none"
+        className="input mb-4 w-full"
       >
         {TIMEZONES.map((tz) => (
           <option key={tz} value={tz}>
@@ -91,13 +91,9 @@ export function CreateFamilyForm() {
         ))}
       </select>
 
-      <button
-        type="submit"
-        disabled={status === "saving"}
-        className="w-full rounded-md bg-zinc-900 px-3 py-2 text-white disabled:opacity-50"
-      >
+      <Button type="submit" disabled={status === "saving"} className="w-full">
         {status === "saving" ? "Creating..." : "Create family"}
-      </button>
+      </Button>
 
       {status === "error" && (
         <p className="mt-3 text-sm text-red-600">{errorMessage}</p>

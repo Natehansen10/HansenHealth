@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { BlueprintCorners } from "@/components/ui/blueprint-corners";
+import { Button } from "@/components/ui/button";
 
 export function CreateInviteForm() {
   const router = useRouter();
@@ -64,12 +66,13 @@ export function CreateInviteForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="mb-6 rounded-lg border border-zinc-200 bg-white p-6"
+      className="blueprint mb-6 border border-divider bg-transparent p-6"
     >
-      <h2 className="mb-4 text-lg font-semibold text-zinc-900">
+      <BlueprintCorners />
+      <h2 className="mb-4 text-lg font-semibold text-foreground">
         Invite a family member
       </h2>
-      <label htmlFor="email" className="mb-1 block text-sm text-zinc-600">
+      <label htmlFor="email" className="mb-1 block text-sm text-muted">
         Email
       </label>
       <input
@@ -78,23 +81,19 @@ export function CreateInviteForm() {
         required
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        className="mb-4 w-full rounded-md border border-zinc-300 px-3 py-2 text-zinc-900 focus:border-zinc-500 focus:outline-none"
+        className="input mb-4 w-full"
         placeholder="them@example.com"
       />
-      <button
-        type="submit"
-        disabled={status === "saving"}
-        className="rounded-md bg-zinc-900 px-3 py-2 text-white disabled:opacity-50"
-      >
+      <Button type="submit" disabled={status === "saving"}>
         {status === "saving" ? "Sending..." : "Create invite"}
-      </button>
+      </Button>
 
       {status === "error" && (
         <p className="mt-3 text-sm text-red-600">{errorMessage}</p>
       )}
 
       {inviteUrl && (
-        <div className="mt-4 rounded-md bg-zinc-50 p-3 text-sm text-zinc-700">
+        <div className="mt-4 border border-divider bg-surface p-3 text-sm text-foreground">
           <p className="mb-1">Invite link (send this manually for now):</p>
           <code className="break-all">{inviteUrl}</code>
         </div>

@@ -31,11 +31,11 @@ export default async function FamilySettingsPage() {
 
   return (
     <div className="mx-auto max-w-lg px-4 py-8">
-      <h1 className="mb-6 text-2xl font-semibold text-zinc-900">
+      <h1 className="mb-6 text-2xl font-semibold text-foreground">
         Family settings
       </h1>
       <CreateInviteForm />
-      <h2 className="mb-3 text-lg font-semibold text-zinc-900">Invites</h2>
+      <h2 className="mb-3 text-lg font-semibold text-foreground">Invites</h2>
       <PendingInvitesList invites={invites ?? []} />
     </div>
   );

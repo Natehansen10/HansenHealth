@@ -132,7 +132,7 @@ export function PushSubscribeButton() {
 
   if (support === "unsupported") {
     return (
-      <p className="text-sm text-zinc-400">
+      <p className="text-sm text-muted">
         Push notifications aren&apos;t supported in this browser.
       </p>
     );

@@ -19,10 +19,10 @@ function ToggleRow({
   return (
     <label className="flex items-center justify-between gap-4 py-3">
       <span>
-        <span className="block text-sm font-medium text-zinc-900">
+        <span className="block text-sm font-medium text-foreground">
           {label}
         </span>
-        <span className="block text-sm text-zinc-500">{description}</span>
+        <span className="block text-sm text-muted">{description}</span>
       </span>
       <input
         type="checkbox"
@@ -31,7 +31,7 @@ function ToggleRow({
         checked={checked}
         disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-5 w-9 shrink-0 cursor-pointer appearance-none rounded-full bg-zinc-200 transition-colors checked:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50 relative before:absolute before:left-0.5 before:top-0.5 before:h-4 before:w-4 before:rounded-full before:bg-white before:transition-transform checked:before:translate-x-4"
+        className="h-5 w-9 shrink-0 cursor-pointer appearance-none rounded-full bg-neutral-300 transition-colors checked:bg-accent-900 disabled:cursor-not-allowed disabled:opacity-50 relative before:absolute before:left-0.5 before:top-0.5 before:h-4 before:w-4 before:rounded-full before:bg-background before:transition-transform checked:before:translate-x-4"
       />
     </label>
   );
@@ -79,7 +79,7 @@ export function NotificationPreferencesForm({
   }
 
   return (
-    <div className="divide-y divide-zinc-100">
+    <div className="divide-y divide-divider">
       <ToggleRow
         label="Push notifications"
         description="Get notified on this device for family activity."

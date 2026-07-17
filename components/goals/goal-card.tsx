@@ -70,11 +70,9 @@ export function GoalCard({ goal }: { goal: Goal }) {
     <Card className={isActive ? "" : "opacity-60"}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="font-medium text-zinc-900">{goal.title}</h3>
+          <h3 className="font-medium text-foreground">{goal.title}</h3>
           {goal.category && (
-            <p className="text-sm text-zinc-500 capitalize">
-              {goal.category}
-            </p>
+            <p className="text-sm text-muted capitalize">{goal.category}</p>
           )}
         </div>
         <Button
@@ -90,7 +88,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
       <div className="mt-4">
         <label
           htmlFor={`frequency-${goal.id}`}
-          className="mb-1 block text-sm text-zinc-600"
+          className="mb-1 block text-sm text-muted"
         >
           Times per week
         </label>
@@ -99,7 +97,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
           value={frequency}
           disabled={saving}
           onChange={(e) => handleFrequencyChange(Number(e.target.value))}
-          className="w-full max-w-[120px] rounded-md border border-zinc-300 px-3 py-2 text-zinc-900 focus:border-zinc-500 focus:outline-none disabled:opacity-50"
+          className="input w-full max-w-[120px] disabled:opacity-50"
         >
           {FREQUENCIES.map((n) => (
             <option key={n} value={n}>
@@ -107,7 +105,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
             </option>
           ))}
         </select>
-        <p className="mt-1 text-xs text-zinc-400">
+        <p className="mt-1 text-xs text-muted">
           Changes apply starting next month.
         </p>
       </div>

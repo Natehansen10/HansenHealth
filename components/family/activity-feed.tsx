@@ -268,18 +268,18 @@ export function ActivityFeed({
   }, []);
 
   if (!loaded) {
-    return <p className="text-sm text-zinc-400">Loading activity...</p>;
+    return <p className="text-sm text-muted">Loading activity...</p>;
   }
 
   if (checkins.length === 0) {
-    return <p className="text-zinc-500">No check-ins yet.</p>;
+    return <p className="text-muted">No check-ins yet.</p>;
   }
 
   return (
     <div className="flex flex-col gap-4">
       {checkins.map((checkin) => (
         <Card key={checkin.id}>
-          <p className="text-zinc-900">
+          <p className="text-foreground">
             <span className="font-medium">{checkin.authorName}</span>{" "}
             checked in on {checkin.goalTitle}
             {checkin.note ? `: "${checkin.note}"` : ""}

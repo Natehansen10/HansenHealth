@@ -27,15 +27,19 @@ export default async function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-lg px-4 py-8">
-      <h1 className="mb-6 text-2xl font-semibold text-zinc-900">Settings</h1>
+      <h1 className="mb-6 text-2xl font-semibold text-foreground">
+        Settings
+      </h1>
 
       <Card className="mb-6">
-        <h2 className="mb-1 text-lg font-semibold text-zinc-900">Timezone</h2>
-        <p className="text-sm text-zinc-500">{profile.timezone}</p>
+        <h2 className="mb-1 text-lg font-semibold text-foreground">
+          Timezone
+        </h2>
+        <p className="text-sm text-muted">{profile.timezone}</p>
       </Card>
 
       <Card className="mb-6">
-        <h2 className="mb-1 text-lg font-semibold text-zinc-900">
+        <h2 className="mb-1 text-lg font-semibold text-foreground">
           Notifications
         </h2>
         <NotificationPreferencesForm
@@ -45,10 +49,10 @@ export default async function SettingsPage() {
       </Card>
 
       <Card className="mb-6">
-        <h2 className="mb-1 text-lg font-semibold text-zinc-900">
+        <h2 className="mb-1 text-lg font-semibold text-foreground">
           Push on this device
         </h2>
-        <p className="mb-3 text-sm text-zinc-500">
+        <p className="mb-3 text-sm text-muted">
           Turning on push notifications above only controls whether you
           receive them. You also need to enable push for each device/browser
           you want to be notified on.
@@ -59,7 +63,7 @@ export default async function SettingsPage() {
       {profile.role === "admin" && (
         <Link
           href="/settings/family"
-          className="text-sm font-medium text-zinc-900 underline"
+          className="text-sm font-medium text-foreground underline"
         >
           Manage family invites
         </Link>

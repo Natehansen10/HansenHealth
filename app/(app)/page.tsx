@@ -103,10 +103,10 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
-      <h1 className="mb-2 text-2xl font-semibold text-zinc-900">
+      <h1 className="mb-2 text-2xl font-semibold text-foreground">
         {family?.name ?? "Your family"}
       </h1>
-      <p className="mb-6 text-zinc-600">Welcome, {profile.full_name}.</p>
+      <p className="mb-6 text-muted">Welcome, {profile.full_name}.</p>
 
       <div className="mb-8 flex flex-col gap-3">
         {memberSummaries.map((summary) => (
@@ -114,7 +114,7 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      <h2 className="mb-3 text-lg font-semibold text-zinc-900">
+      <h2 className="mb-3 text-lg font-semibold text-foreground">
         Recent activity
       </h2>
       <ActivityFeed

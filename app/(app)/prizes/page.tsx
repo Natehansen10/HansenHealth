@@ -117,17 +117,17 @@ export default async function PrizesPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-semibold text-zinc-900">Prizes</h1>
+      <h1 className="mb-6 text-2xl font-semibold text-foreground">Prizes</h1>
 
-      <h2 className="mb-3 text-lg font-semibold text-zinc-900">
+      <h2 className="mb-3 text-lg font-semibold text-foreground">
         Current month standings
       </h2>
       <div className="mb-8 flex flex-col gap-3">
         {standings.map((s) => (
           <Card key={s.userId}>
             <div className="mb-2 flex items-center justify-between">
-              <span className="font-medium text-zinc-900">{s.fullName}</span>
-              <span className="text-sm text-zinc-500">
+              <span className="font-medium text-foreground">{s.fullName}</span>
+              <span className="text-sm text-muted">
                 {s.hasGoals ? `${s.percent ?? 0}%` : "No goals yet"}
               </span>
             </div>
@@ -136,21 +136,21 @@ export default async function PrizesPage() {
         ))}
       </div>
 
-      <h2 className="mb-3 text-lg font-semibold text-zinc-900">
+      <h2 className="mb-3 text-lg font-semibold text-foreground">
         Prize history
       </h2>
       {monthOrder.length === 0 ? (
-        <p className="text-zinc-500">
+        <p className="text-muted">
           No prizes awarded yet — keep logging check-ins!
         </p>
       ) : (
         <div className="flex flex-col gap-3">
           {monthOrder.map((month) => (
             <Card key={month}>
-              <div className="mb-1 font-medium text-zinc-900">
+              <div className="mb-1 font-medium text-foreground">
                 {formatMonth(month)}
               </div>
-              <p className="text-sm text-zinc-600">
+              <p className="text-sm text-muted">
                 {winnersByMonth.get(month)!.join(", ")}
               </p>
             </Card>

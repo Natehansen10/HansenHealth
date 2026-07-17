@@ -81,16 +81,16 @@ export default async function FamilyMemberPage({
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
-      <Link href="/" className="mb-4 inline-block text-sm text-zinc-500">
+      <Link href="/" className="mb-4 inline-block text-sm text-muted">
         &larr; Back to dashboard
       </Link>
-      <h1 className="mb-6 text-2xl font-semibold text-zinc-900">
+      <h1 className="mb-6 text-2xl font-semibold text-foreground">
         {member.full_name}
       </h1>
 
-      <h2 className="mb-3 text-lg font-semibold text-zinc-900">Goals</h2>
+      <h2 className="mb-3 text-lg font-semibold text-foreground">Goals</h2>
       {!goals || goals.length === 0 ? (
-        <p className="mb-8 text-zinc-500">No goals yet.</p>
+        <p className="mb-8 text-muted">No goals yet.</p>
       ) : (
         <div className="mb-8 flex flex-col gap-4">
           {goals.map((goal) => {
@@ -108,10 +108,10 @@ export default async function FamilyMemberPage({
                 className={goal.is_active ? "" : "opacity-60"}
               >
                 <div className="mb-1 flex items-center justify-between text-sm">
-                  <span className="font-medium text-zinc-900">
+                  <span className="font-medium text-foreground">
                     {goal.title}
                   </span>
-                  <span className="text-zinc-500">
+                  <span className="text-muted">
                     {target !== null
                       ? `${checkinCount} of ${target} (${percent}%)`
                       : "target not yet set"}
@@ -124,9 +124,9 @@ export default async function FamilyMemberPage({
         </div>
       )}
 
-      <h2 className="mb-3 text-lg font-semibold text-zinc-900">History</h2>
+      <h2 className="mb-3 text-lg font-semibold text-foreground">History</h2>
       {!history || history.length === 0 ? (
-        <p className="text-zinc-500">No check-ins yet.</p>
+        <p className="text-muted">No check-ins yet.</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {history.map((entry) => {
@@ -137,14 +137,14 @@ export default async function FamilyMemberPage({
             return (
               <li
                 key={entry.id}
-                className="rounded-md border border-zinc-100 px-3 py-2 text-sm"
+                className="border border-divider px-3 py-2 text-sm"
               >
-                <span className="text-zinc-500">{entry.checkin_date}</span>{" "}
-                <span className="text-zinc-900">
+                <span className="text-muted">{entry.checkin_date}</span>{" "}
+                <span className="text-foreground">
                   {goalTitle ?? "a goal"}
                 </span>
                 {entry.note && (
-                  <span className="text-zinc-500"> — {entry.note}</span>
+                  <span className="text-muted"> — {entry.note}</span>
                 )}
               </li>
             );

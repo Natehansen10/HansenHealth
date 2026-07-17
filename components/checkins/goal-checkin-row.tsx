@@ -132,13 +132,11 @@ export function GoalCheckinRow({
     <Card>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="font-medium text-zinc-900">{goal.title}</h3>
+          <h3 className="font-medium text-foreground">{goal.title}</h3>
           {goal.category && (
-            <p className="text-sm text-zinc-500 capitalize">
-              {goal.category}
-            </p>
+            <p className="text-sm text-muted capitalize">{goal.category}</p>
           )}
-          <p className="mt-1 text-sm text-zinc-600">
+          <p className="mt-1 text-sm text-muted">
             {target !== null
               ? `${monthCount} of ${target} this month (${percent}%)`
               : `${monthCount} this month (target not yet set)`}
@@ -161,13 +159,13 @@ export function GoalCheckinRow({
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Add a note (optional)"
-          className="mt-3 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-zinc-500 focus:outline-none"
+          className="input mt-3 w-full text-sm"
         />
       )}
 
       {todayCheckin && (
-        <div className="mt-3 rounded-md bg-zinc-50 p-3">
-          <p className="text-sm text-zinc-700">
+        <div className="mt-3 border border-divider bg-surface p-3">
+          <p className="text-sm text-foreground">
             Checked in today
             {todayCheckin.note ? `: "${todayCheckin.note}"` : "."}
           </p>
@@ -179,7 +177,7 @@ export function GoalCheckinRow({
                   <input
                     value={editingNote}
                     onChange={(e) => setEditingNote(e.target.value)}
-                    className="flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-zinc-500 focus:outline-none"
+                    className="input flex-1 text-sm"
                   />
                   <Button
                     type="button"
@@ -210,7 +208,7 @@ export function GoalCheckinRow({
               )}
             </>
           ) : (
-            <p className="mt-2 text-xs text-zinc-400">
+            <p className="mt-2 text-xs text-muted">
               Edit window closed (24 hours after logging).
             </p>
           )}

@@ -28,7 +28,7 @@ export default async function InvitePage({
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <AcceptInviteForm token={token} />
     </div>
   );

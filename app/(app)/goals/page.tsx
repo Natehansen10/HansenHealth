@@ -24,16 +24,16 @@ export default async function GoalsPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-zinc-900">My Goals</h1>
+        <h1 className="text-2xl font-semibold text-foreground">My Goals</h1>
         <Link href="/goals/new">
           <Button type="button">New goal</Button>
         </Link>
       </div>
 
       {!goals || goals.length === 0 ? (
-        <p className="text-zinc-500">
+        <p className="text-muted">
           No goals yet.{" "}
-          <Link href="/goals/new" className="text-zinc-900 underline">
+          <Link href="/goals/new" className="text-foreground underline">
             Create your first goal
           </Link>
           .

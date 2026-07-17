@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { triggerTargetSnapshot } from "@/lib/actions/goals";
+import { BlueprintCorners } from "@/components/ui/blueprint-corners";
 import { Button } from "@/components/ui/button";
 
 type Template = {
@@ -81,19 +82,17 @@ export function NewGoalForm({ templates }: { templates: Template[] }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="w-full max-w-sm rounded-lg border border-zinc-200 bg-white p-6"
+      className="blueprint w-full max-w-sm border border-divider bg-transparent p-6"
     >
-      <label
-        htmlFor="template"
-        className="mb-1 block text-sm text-zinc-600"
-      >
+      <BlueprintCorners />
+      <label htmlFor="template" className="mb-1 block text-sm text-muted">
         Start from a template
       </label>
       <select
         id="template"
         value={selectedTemplateId}
         onChange={(e) => handleTemplateChange(e.target.value)}
-        className="mb-4 w-full rounded-md border border-zinc-300 px-3 py-2 text-zinc-900 focus:border-zinc-500 focus:outline-none"
+        className="input mb-4 w-full"
       >
         <option value={CUSTOM_VALUE}>Custom goal</option>
         {templates.map((template) => (
@@ -103,7 +102,7 @@ export function NewGoalForm({ templates }: { templates: Template[] }) {
         ))}
       </select>
 
-      <label htmlFor="title" className="mb-1 block text-sm text-zinc-600">
+      <label htmlFor="title" className="mb-1 block text-sm text-muted">
         Title
       </label>
       <input
@@ -111,29 +110,29 @@ export function NewGoalForm({ templates }: { templates: Template[] }) {
         required
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        className="mb-4 w-full rounded-md border border-zinc-300 px-3 py-2 text-zinc-900 focus:border-zinc-500 focus:outline-none"
+        className="input mb-4 w-full"
         placeholder="Run"
       />
 
-      <label htmlFor="category" className="mb-1 block text-sm text-zinc-600">
+      <label htmlFor="category" className="mb-1 block text-sm text-muted">
         Category (optional)
       </label>
       <input
         id="category"
         value={category}
         onChange={(e) => setCategory(e.target.value)}
-        className="mb-4 w-full rounded-md border border-zinc-300 px-3 py-2 text-zinc-900 focus:border-zinc-500 focus:outline-none"
+        className="input mb-4 w-full"
         placeholder="cardio"
       />
 
-      <label htmlFor="frequency" className="mb-1 block text-sm text-zinc-600">
+      <label htmlFor="frequency" className="mb-1 block text-sm text-muted">
         Times per week
       </label>
       <select
         id="frequency"
         value={frequency}
         onChange={(e) => setFrequency(Number(e.target.value))}
-        className="mb-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-zinc-900 focus:border-zinc-500 focus:outline-none"
+        className="input mb-1 w-full"
       >
         {FREQUENCIES.map((n) => (
           <option key={n} value={n}>
@@ -141,9 +140,7 @@ export function NewGoalForm({ templates }: { templates: Template[] }) {
           </option>
         ))}
       </select>
-      <p className="mb-4 text-xs text-zinc-400">
-        Applies starting this month.
-      </p>
+      <p className="mb-4 text-xs text-muted">Applies starting this month.</p>
 
       <Button type="submit" disabled={status === "saving"} className="w-full">
         {status === "saving" ? "Creating..." : "Create goal"}

@@ -33,10 +33,10 @@ export default async function CheckinPage() {
   if (!goals || goals.length === 0) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-8">
-        <h1 className="mb-4 text-2xl font-semibold text-zinc-900">
+        <h1 className="mb-4 text-2xl font-semibold text-foreground">
           Check in
         </h1>
-        <p className="text-zinc-500">No active goals to check in on yet.</p>
+        <p className="text-muted">No active goals to check in on yet.</p>
       </div>
     );
   }
@@ -75,7 +75,7 @@ export default async function CheckinPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-semibold text-zinc-900">Check in</h1>
+      <h1 className="mb-6 text-2xl font-semibold text-foreground">Check in</h1>
       <div className="flex flex-col gap-4">
         {goals.map((goal) => (
           <GoalCheckinRow

@@ -51,7 +51,7 @@ export function CommentThread({
       {comments.length > 0 && (
         <ul className="mb-2 flex flex-col gap-1">
           {comments.map((comment) => (
-            <li key={comment.id} className="text-sm text-zinc-700">
+            <li key={comment.id} className="text-sm text-foreground">
               <span className="font-medium">{comment.authorName}</span>{" "}
               {comment.body}
             </li>
@@ -63,12 +63,12 @@ export function CommentThread({
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder="Add a comment"
-          className="flex-1 rounded-md border border-zinc-300 px-2 py-1 text-sm text-zinc-900 focus:border-zinc-500 focus:outline-none"
+          className="input flex-1 py-1 text-sm"
         />
         <button
           type="submit"
           disabled={busy || !body.trim()}
-          className="text-sm font-medium text-zinc-900 disabled:opacity-50"
+          className="text-sm font-medium text-foreground disabled:opacity-50"
         >
           Post
         </button>
