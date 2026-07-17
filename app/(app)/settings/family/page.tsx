@@ -19,7 +19,7 @@ export default async function FamilySettingsPage() {
     .eq("id", user.id)
     .single();
 
-  if (!profile || profile.role !== "admin") {
+  if (!profile || profile.role !== "admin" || !profile.family_id) {
     redirect("/settings");
   }
 

@@ -21,18 +21,30 @@ export function CreateInviteForm() {
       data: { user },
     } = await supabase.auth.getUser();
 
+    if (!user) {
+      setStatus("error");
+      setErrorMessage("Your session expired. Please sign in again.");
+      return;
+    }
+
     const { data: profile } = await supabase
       .from("profiles")
       .select("family_id")
-      .eq("id", user?.id ?? "")
+      .eq("id", user.id)
       .single();
+
+    if (!profile?.family_id) {
+      setStatus("error");
+      setErrorMessage("Could not determine your family. Try refreshing.");
+      return;
+    }
 
     const { data, error } = await supabase
       .from("family_invites")
       .insert({
-        family_id: profile?.family_id,
+        family_id: profile.family_id,
         email,
-        invited_by: user?.id,
+        invited_by: user.id,
       })
       .select("token")
       .single();
