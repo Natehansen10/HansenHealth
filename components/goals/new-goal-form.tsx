@@ -48,40 +48,51 @@ export function NewGoalForm({ templates }: { templates: Template[] }) {
     e.preventDefault();
     setStatus("saving");
 
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    if (!user) {
+      if (!user) {
+        setStatus("error");
+        setErrorMessage("Your session expired. Please sign in again.");
+        return;
+      }
+
+      const { error } = await supabase.from("goals").insert({
+        user_id: user.id,
+        title,
+        category: category || null,
+        frequency_per_week: frequency,
+        source: selectedTemplateId === CUSTOM_VALUE ? "custom" : "template",
+      });
+
+      if (error) {
+        setStatus("error");
+        setErrorMessage(error.message);
+        return;
+      }
+
+      // Best-effort recalculation -- don't block navigation on it. The Edge
+      // Function call has no timeout, and a slow/cold-starting invocation
+      // would otherwise leave the user stuck on "Creating..." even though
+      // the goal row above was already inserted successfully. The cron-
+      // scheduled snapshot will pick up any goal this call misses.
+      triggerTargetSnapshot();
+
+      router.push("/goals");
+      router.refresh();
+    } catch (err) {
+      // A thrown rejection (e.g. a network failure on auth.getUser() or the
+      // insert itself) previously left the button stuck on "Creating..."
+      // forever -- nothing here caught it, so `status` never left "saving".
+      console.error("Goal creation failed", err);
       setStatus("error");
-      setErrorMessage("Your session expired. Please sign in again.");
-      return;
+      setErrorMessage(
+        "Something went wrong creating your goal. Check your connection and try again.",
+      );
     }
-
-    const { error } = await supabase.from("goals").insert({
-      user_id: user.id,
-      title,
-      category: category || null,
-      frequency_per_week: frequency,
-      source: selectedTemplateId === CUSTOM_VALUE ? "custom" : "template",
-    });
-
-    if (error) {
-      setStatus("error");
-      setErrorMessage(error.message);
-      return;
-    }
-
-    // Best-effort recalculation -- don't block navigation on it. The Edge
-    // Function call has no timeout, and a slow/cold-starting invocation
-    // would otherwise leave the user stuck on "Creating..." even though
-    // the goal row above was already inserted successfully. The cron-
-    // scheduled snapshot will pick up any goal this call misses.
-    triggerTargetSnapshot();
-
-    router.push("/goals");
-    router.refresh();
   }
 
   return (

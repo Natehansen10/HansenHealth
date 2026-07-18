@@ -20,25 +20,35 @@ export function AcceptInviteForm({ token }: { token: string }) {
     e.preventDefault();
     setStatus("saving");
 
-    const supabase = createClient();
-    const { error } = await supabase.rpc("accept_family_invite", {
-      invite_token: token,
-      new_full_name: fullName,
-      new_timezone: timezone,
-    });
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.rpc("accept_family_invite", {
+        invite_token: token,
+        new_full_name: fullName,
+        new_timezone: timezone,
+      });
 
-    if (error) {
+      if (error) {
+        setStatus("error");
+        setErrorMessage(error.message);
+        return;
+      }
+
+      // First-time success path only -- accept_family_invite raises if the
+      // caller already has a profile, so this redirect is inherently one-time.
+      // Per the onboarding flow, first-time users land on /goals, where the
+      // one-time notification/explainer popups are shown.
+      router.push("/goals");
+      router.refresh();
+    } catch (err) {
+      // A thrown rejection (network failure, etc.) would otherwise leave
+      // the button stuck on "Joining..." forever with no way out.
+      console.error("Accepting invite failed", err);
       setStatus("error");
-      setErrorMessage(error.message);
-      return;
+      setErrorMessage(
+        "Something went wrong. Check your connection and try again.",
+      );
     }
-
-    // First-time success path only -- accept_family_invite raises if the
-    // caller already has a profile, so this redirect is inherently one-time.
-    // Per the onboarding flow, first-time users land on /goals, where the
-    // one-time notification/explainer popups are shown.
-    router.push("/goals");
-    router.refresh();
   }
 
   return (

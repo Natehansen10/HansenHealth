@@ -51,129 +51,151 @@ export function GoalCard({ goal }: { goal: Goal }) {
     setSaving(true);
     setErrorMessage("");
 
-    const oldFrequency = frequency;
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    try {
+      const oldFrequency = frequency;
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    const { error } = await supabase
-      .from("goals")
-      .update({ frequency_per_week: newFrequency })
-      .eq("id", goal.id);
+      const { error } = await supabase
+        .from("goals")
+        .update({ frequency_per_week: newFrequency })
+        .eq("id", goal.id);
 
-    if (error) {
-      setSaving(false);
-      setErrorMessage(error.message);
-      return;
-    }
+      if (error) {
+        setErrorMessage(error.message);
+        return;
+      }
 
-    // Frequency changes take effect immediately: blend this month's target
-    // between the old and new frequency (server-side, via the Edge
-    // Function -- month_target math never happens on the client).
-    const { error: recalcError } = await applyGoalChange(
-      goal.id,
-      oldFrequency,
-      newFrequency,
-    );
-
-    setSaving(false);
-
-    if (recalcError) {
-      setErrorMessage(recalcError);
-    }
-
-    if (user) {
-      await logGoalActivity(
+      // Frequency changes take effect immediately: blend this month's target
+      // between the old and new frequency (server-side, via the Edge
+      // Function -- month_target math never happens on the client).
+      const { error: recalcError } = await applyGoalChange(
         goal.id,
-        user.id,
-        `changed "${title}" to ${newFrequency}x/week, effective immediately`,
+        oldFrequency,
+        newFrequency,
       );
-    }
 
-    setFrequency(newFrequency);
-    router.refresh();
+      if (recalcError) {
+        setErrorMessage(recalcError);
+      }
+
+      if (user) {
+        await logGoalActivity(
+          goal.id,
+          user.id,
+          `changed "${title}" to ${newFrequency}x/week, effective immediately`,
+        );
+      }
+
+      setFrequency(newFrequency);
+      router.refresh();
+    } catch (err) {
+      // A thrown rejection here previously left the card stuck mid-save
+      // forever, with no error shown and no way to retry.
+      console.error("handleFrequencyChange failed", err);
+      setErrorMessage(
+        "Something went wrong. Check your connection and try again.",
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleToggleActive() {
     setSaving(true);
     setErrorMessage("");
 
-    const nextActive = !isActive;
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    try {
+      const nextActive = !isActive;
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    const { error } = await supabase
-      .from("goals")
-      .update({ is_active: nextActive })
-      .eq("id", goal.id);
+      const { error } = await supabase
+        .from("goals")
+        .update({ is_active: nextActive })
+        .eq("id", goal.id);
 
-    setSaving(false);
+      if (error) {
+        setErrorMessage(error.message);
+        return;
+      }
 
-    if (error) {
-      setErrorMessage(error.message);
-      return;
-    }
+      if (user) {
+        await logGoalActivity(
+          goal.id,
+          user.id,
+          nextActive
+            ? `reactivated "${title}"`
+            : `deactivated "${title}"`,
+        );
+      }
 
-    if (user) {
-      await logGoalActivity(
-        goal.id,
-        user.id,
-        nextActive
-          ? `reactivated "${title}"`
-          : `deactivated "${title}"`,
+      setIsActive(nextActive);
+      router.refresh();
+    } catch (err) {
+      console.error("handleToggleActive failed", err);
+      setErrorMessage(
+        "Something went wrong. Check your connection and try again.",
       );
+    } finally {
+      setSaving(false);
     }
-
-    setIsActive(nextActive);
-    router.refresh();
   }
 
   async function handleSaveDetails() {
     setSaving(true);
     setErrorMessage("");
 
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    const { error } = await supabase
-      .from("goals")
-      .update({
-        title,
-        category: category || null,
-        unit: unit || null,
-      })
-      .eq("id", goal.id);
+      const { error } = await supabase
+        .from("goals")
+        .update({
+          title,
+          category: category || null,
+          unit: unit || null,
+        })
+        .eq("id", goal.id);
 
-    setSaving(false);
+      if (error) {
+        setErrorMessage(error.message);
+        return;
+      }
 
-    if (error) {
-      setErrorMessage(error.message);
-      return;
+      if (user) {
+        const changes: string[] = [];
+        if (title !== goal.title) {
+          changes.push(`renamed "${goal.title}" to "${title}"`);
+        }
+        if ((category || null) !== goal.category) {
+          changes.push(`updated the category for "${title}"`);
+        }
+        if ((unit || null) !== goal.unit) {
+          changes.push(`updated the unit for "${title}"`);
+        }
+        if (changes.length > 0) {
+          await logGoalActivity(goal.id, user.id, changes.join("; "));
+        }
+      }
+
+      setIsEditing(false);
+      router.refresh();
+    } catch (err) {
+      console.error("handleSaveDetails failed", err);
+      setErrorMessage(
+        "Something went wrong. Check your connection and try again.",
+      );
+    } finally {
+      setSaving(false);
     }
-
-    if (user) {
-      const changes: string[] = [];
-      if (title !== goal.title) {
-        changes.push(`renamed "${goal.title}" to "${title}"`);
-      }
-      if ((category || null) !== goal.category) {
-        changes.push(`updated the category for "${title}"`);
-      }
-      if ((unit || null) !== goal.unit) {
-        changes.push(`updated the unit for "${title}"`);
-      }
-      if (changes.length > 0) {
-        await logGoalActivity(goal.id, user.id, changes.join("; "));
-      }
-    }
-
-    setIsEditing(false);
-    router.refresh();
   }
 
   return (
