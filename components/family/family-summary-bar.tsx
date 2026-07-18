@@ -32,11 +32,11 @@ export function FamilySummaryBar({ summary }: { summary: MemberSummary }) {
         onClick={() => setExpanded((v) => !v)}
         className="flex w-full flex-col gap-2 text-left"
       >
-        <div className="flex items-center justify-between">
+        <div className="flex w-full items-center justify-between gap-3">
           <span className="font-medium text-foreground">
             {summary.fullName}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-shrink-0 items-center gap-2">
             <span className="text-sm text-muted">
               {summary.summaryPercent === null
                 ? "No goals yet"

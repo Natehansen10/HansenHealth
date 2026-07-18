@@ -125,9 +125,9 @@ export default async function PrizesPage() {
       <div className="mb-8 flex flex-col gap-3">
         {standings.map((s) => (
           <Card key={s.userId}>
-            <div className="mb-2 flex items-center justify-between">
+            <div className="mb-2 flex w-full items-center justify-between gap-3">
               <span className="font-medium text-foreground">{s.fullName}</span>
-              <span className="text-sm text-muted">
+              <span className="flex-shrink-0 text-sm text-muted">
                 {s.hasGoals ? `${s.percent ?? 0}%` : "No goals yet"}
               </span>
             </div>
