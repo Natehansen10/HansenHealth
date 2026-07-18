@@ -451,6 +451,14 @@ entrypoint = "./functions/apply-goal-change/index.ts"
 # a client updates goals.frequency_per_week, to blend the current month's
 # target between the old and new frequency. Never called from the browser
 # directly -- same "secret" auth mode as the other three functions.
-# Cron on the 1st of the month at 00:15 UTC, evaluating the prior month
-# (see the cron migration). Uses "secret" auth mode like the other two
-# functions -- service role only, never reachable from a browser.
+
+[functions.send-family-invite]
+enabled = true
+verify_jwt = false
+import_map = "./functions/send-family-invite/deno.json"
+entrypoint = "./functions/send-family-invite/index.ts"
+# Invoked synchronously (Server Action, lib/actions/family-invites.ts)
+# right after a family_invites row is created, to email the invite link
+# via Resend. Takes only an inviteId -- looks up email/token/family/
+# inviter server-side rather than trusting client-supplied values. Same
+# "secret" auth mode as the other four functions.

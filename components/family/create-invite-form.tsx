@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { sendFamilyInviteEmail } from "@/lib/actions/family-invites";
 import { BlueprintCorners } from "@/components/ui/blueprint-corners";
 import { Button } from "@/components/ui/button";
 
@@ -12,11 +13,13 @@ export function CreateInviteForm() {
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [emailWarning, setEmailWarning] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setStatus("saving");
     setInviteUrl(null);
+    setEmailWarning(null);
 
     const supabase = createClient();
     const {
@@ -48,13 +51,20 @@ export function CreateInviteForm() {
         email,
         invited_by: user.id,
       })
-      .select("token")
+      .select("id, token")
       .single();
 
     if (error || !data) {
       setStatus("error");
       setErrorMessage(error?.message ?? "Could not create invite.");
       return;
+    }
+
+    const { error: emailError } = await sendFamilyInviteEmail(data.id);
+    if (emailError) {
+      setEmailWarning(
+        `${emailError} You can still copy the link below and send it yourself.`,
+      );
     }
 
     setStatus("idle");
@@ -85,16 +95,22 @@ export function CreateInviteForm() {
         placeholder="them@example.com"
       />
       <Button type="submit" disabled={status === "saving"}>
-        {status === "saving" ? "Sending..." : "Create invite"}
+        {status === "saving" ? "Sending..." : "Send invite"}
       </Button>
 
       {status === "error" && (
         <p className="mt-3 text-sm text-red-600">{errorMessage}</p>
       )}
 
+      {emailWarning && (
+        <p className="mt-3 text-sm text-red-600">{emailWarning}</p>
+      )}
+
       {inviteUrl && (
         <div className="mt-4 border border-divider bg-surface p-3 text-sm text-foreground">
-          <p className="mb-1">Invite link (send this manually for now):</p>
+          <p className="mb-1">
+            {emailWarning ? "Invite link:" : "Invite sent! Link, if needed:"}
+          </p>
           <code className="break-all">{inviteUrl}</code>
         </div>
       )}
