@@ -13,7 +13,7 @@ const links = [
   { href: "/settings", label: "Settings" },
 ];
 
-export function AppNav() {
+export function AppNav({ userName }: { userName?: string }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -32,6 +32,11 @@ export function AppNav() {
             <rect x="43" y="43" width="49" height="14" fill="var(--color-accent-900)" />
           </svg>
           Hansen Health
+          {userName && (
+            <span className="font-body text-sm font-normal text-muted">
+              — {userName}
+            </span>
+          )}
         </Link>
 
         <div className="hidden items-center gap-4 sm:flex">

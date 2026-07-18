@@ -4,10 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { ProgressBar } from "@/components/ui/progress-bar";
+import { progressLabel } from "@/lib/utils/progress";
 
 type GoalSummary = {
   goalId: string;
   title: string;
+  unit: string | null;
   checkinCount: number;
   target: number | null;
   percent: number | null;
@@ -34,11 +36,21 @@ export function FamilySummaryBar({ summary }: { summary: MemberSummary }) {
           <span className="font-medium text-foreground">
             {summary.fullName}
           </span>
-          <span className="text-sm text-muted">
-            {summary.summaryPercent === null
-              ? "No goals yet"
-              : `${summary.summaryPercent}%`}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted">
+              {summary.summaryPercent === null
+                ? "No goals yet"
+                : `${summary.summaryPercent}%`}
+            </span>
+            {summary.goals.length > 0 && (
+              <span
+                aria-hidden="true"
+                className="font-heading text-sm text-muted"
+              >
+                {expanded ? "−" : "+"}
+              </span>
+            )}
+          </div>
         </div>
         <ProgressBar percent={summary.summaryPercent} />
       </button>
@@ -49,17 +61,16 @@ export function FamilySummaryBar({ summary }: { summary: MemberSummary }) {
             <p className="text-sm text-muted">No goals yet.</p>
           ) : (
             summary.goals.map((goal) => (
-              <div key={goal.goalId}>
-                <div className="mb-1 flex items-center justify-between text-sm">
-                  <span className="text-foreground">{goal.title}</span>
-                  <span className="text-muted">
-                    {goal.target !== null
-                      ? `${goal.checkinCount} of ${goal.target} (${goal.percent}%)`
-                      : "target not yet set"}
-                  </span>
-                </div>
-                <ProgressBar percent={goal.percent} />
-              </div>
+              <ProgressBar
+                key={goal.goalId}
+                percent={goal.percent}
+                label={`${goal.title} — ${progressLabel({
+                  goalId: goal.goalId,
+                  checkinCount: goal.checkinCount,
+                  target: goal.target,
+                  unit: goal.unit,
+                })}`}
+              />
             ))
           )}
           <Link

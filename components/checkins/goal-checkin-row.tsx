@@ -16,6 +16,10 @@ type TodayCheckin = {
   id: string;
   goal_id: string;
   note: string | null;
+  calories: number | null;
+  distance: number | null;
+  duration_minutes: number | null;
+  author_message: string | null;
   created_at: string;
 } | null;
 
@@ -25,21 +29,35 @@ function isWithinEditWindow(createdAt: string): boolean {
   return Date.now() - new Date(createdAt).getTime() < EDIT_WINDOW_MS;
 }
 
+function toNullableNumber(value: string): number | null {
+  if (value.trim() === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 export function GoalCheckinRow({
   goal,
   today,
   target,
   monthCount,
   todayCheckin,
+  onCheckedIn,
 }: {
   goal: Goal;
   today: string;
   target: number | null;
   monthCount: number;
   todayCheckin: TodayCheckin;
+  onCheckedIn?: () => void;
 }) {
   const router = useRouter();
   const [note, setNote] = useState("");
+  const [calories, setCalories] = useState("");
+  const [distance, setDistance] = useState("");
+  const [durationMinutes, setDurationMinutes] = useState("");
+  const [authorMessage, setAuthorMessage] = useState("");
+  const [showDetails, setShowDetails] = useState(false);
+
   const [editingNote, setEditingNote] = useState(todayCheckin?.note ?? "");
   const [isEditing, setIsEditing] = useState(false);
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
@@ -69,6 +87,10 @@ export function GoalCheckinRow({
       user_id: user.id,
       checkin_date: today,
       note: note || null,
+      calories: toNullableNumber(calories),
+      distance: toNullableNumber(distance),
+      duration_minutes: toNullableNumber(durationMinutes),
+      author_message: authorMessage || null,
     });
 
     setStatus("idle");
@@ -80,6 +102,12 @@ export function GoalCheckinRow({
     }
 
     setNote("");
+    setCalories("");
+    setDistance("");
+    setDurationMinutes("");
+    setAuthorMessage("");
+    setShowDetails(false);
+    onCheckedIn?.();
     router.refresh();
   }
 
@@ -155,12 +183,57 @@ export function GoalCheckinRow({
       </div>
 
       {!todayCheckin && (
-        <input
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="Add a note (optional)"
-          className="input mt-3 w-full text-sm"
-        />
+        <div className="mt-3">
+          <input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Add a note (optional)"
+            className="input w-full"
+          />
+
+          {showDetails ? (
+            <div className="mt-3 flex flex-col gap-2">
+              <div className="grid grid-cols-3 gap-2">
+                <input
+                  value={calories}
+                  onChange={(e) => setCalories(e.target.value)}
+                  placeholder="Calories"
+                  inputMode="numeric"
+                  className="input text-sm"
+                />
+                <input
+                  value={distance}
+                  onChange={(e) => setDistance(e.target.value)}
+                  placeholder="Distance"
+                  inputMode="decimal"
+                  className="input text-sm"
+                />
+                <input
+                  value={durationMinutes}
+                  onChange={(e) => setDurationMinutes(e.target.value)}
+                  placeholder="Minutes"
+                  inputMode="numeric"
+                  className="input text-sm"
+                />
+              </div>
+              <textarea
+                value={authorMessage}
+                onChange={(e) => setAuthorMessage(e.target.value)}
+                placeholder="Post an encouraging message to the group (optional)"
+                rows={2}
+                className="input w-full text-sm"
+              />
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowDetails(true)}
+              className="mt-2 text-sm text-muted underline"
+            >
+              Add details
+            </button>
+          )}
+        </div>
       )}
 
       {todayCheckin && (
@@ -169,6 +242,27 @@ export function GoalCheckinRow({
             Checked in today
             {todayCheckin.note ? `: "${todayCheckin.note}"` : "."}
           </p>
+          {todayCheckin.author_message && (
+            <p className="mt-1 text-sm text-foreground italic">
+              &ldquo;{todayCheckin.author_message}&rdquo;
+            </p>
+          )}
+          {(todayCheckin.calories !== null ||
+            todayCheckin.distance !== null ||
+            todayCheckin.duration_minutes !== null) && (
+            <p className="mt-1 text-xs text-muted">
+              {[
+                todayCheckin.calories !== null &&
+                  `${todayCheckin.calories} cal`,
+                todayCheckin.distance !== null &&
+                  `${todayCheckin.distance} distance`,
+                todayCheckin.duration_minutes !== null &&
+                  `${todayCheckin.duration_minutes} min`,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          )}
 
           {editable ? (
             <>

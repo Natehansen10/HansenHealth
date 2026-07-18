@@ -58,9 +58,15 @@ project. See `family-health-tracker-build-plan.md` for the full roadmap.
 ## Hard constraints — do not silently change these
 - One family per user. No multi-family membership, no join table for it.
 - Reactions are like-only. No reaction type enum, no emoji picker.
-- Frequency changes and new goals get a non-prorated full-month target,
-  computed by the monthly-target-snapshot Edge Function. Never compute
-  month_target on the client or store it as a static column on `goals`.
+- New goals get a non-prorated full-month target, computed by the
+  monthly-target-snapshot Edge Function. Frequency changes on an EXISTING
+  goal now take effect immediately (changed from the original "next month
+  only" rule, per user decision) via the `apply-goal-change` Edge
+  Function: the current month's target is blended (old frequency ×
+  days-elapsed/7 + new frequency × days-remaining/7), not simply replaced
+  with a fresh full-month figure. Never compute month_target on the
+  client or store it as a static column on `goals` — both Edge Functions
+  are the only places this math happens.
 - Monthly prizes: every user at or above 100% wins. No single-winner logic,
   no tiebreaker logic.
 - Check-ins are editable/deletable only within 24 hours of `created_at`.
@@ -84,6 +90,18 @@ project. See `family-health-tracker-build-plan.md` for the full roadmap.
   belonged to the caller's own family (Phase 4) — both are fixed, but
   they're a reminder that a schema derived from a plan still needs its own
   review pass, not just a diff against the plan.
+- Same rigor applies to a Server Action that forwards a client-supplied
+  resource ID into a service-role Edge Function call — not just to new
+  tables/RLS. `apply-goal-change` (the frequency-change target-blend
+  feature) was the first case of this shape in the codebase: a Server
+  Action is directly callable by any authenticated client with arbitrary
+  arguments, not just via whatever UI flow "normally" calls it, so the
+  Server Action itself must verify the caller owns the referenced
+  resource (an RLS-governed `select` before calling the Edge Function)
+  rather than trusting the ID blindly. Caught by rls-security-reviewer and
+  fixed in `lib/actions/goals.ts`'s `applyGoalChange` — check for this
+  pattern on any future Server-Action-to-service-role-Edge-Function call
+  that takes a client-supplied ID.
 - Supabase Realtime's RLS enforcement on `postgres_changes` was not
   empirically verified against this specific project (no second family to
   test cross-tenant isolation with). `ActivityFeed` therefore filters

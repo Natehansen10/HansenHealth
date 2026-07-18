@@ -41,24 +41,36 @@ export type Database = {
     Tables: {
       checkins: {
         Row: {
+          author_message: string | null
+          calories: number | null
           checkin_date: string
           created_at: string
+          distance: number | null
+          duration_minutes: number | null
           goal_id: string
           id: string
           note: string | null
           user_id: string
         }
         Insert: {
+          author_message?: string | null
+          calories?: number | null
           checkin_date: string
           created_at?: string
+          distance?: number | null
+          duration_minutes?: number | null
           goal_id: string
           id?: string
           note?: string | null
           user_id: string
         }
         Update: {
+          author_message?: string | null
+          calories?: number | null
           checkin_date?: string
           created_at?: string
+          distance?: number | null
+          duration_minutes?: number | null
           goal_id?: string
           id?: string
           note?: string | null
@@ -189,6 +201,87 @@ export type Database = {
           },
         ]
       }
+      family_prizes: {
+        Row: {
+          family_id: string
+          group_prize_description: string | null
+          id: string
+          individual_prize_description: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          family_id: string
+          group_prize_description?: string | null
+          id?: string
+          individual_prize_description?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          family_id?: string
+          group_prize_description?: string | null
+          id?: string
+          individual_prize_description?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_prizes_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: true
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "family_prizes_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goal_activity_log: {
+        Row: {
+          change_summary: string
+          created_at: string
+          goal_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          change_summary: string
+          created_at?: string
+          goal_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          change_summary?: string
+          created_at?: string
+          goal_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_activity_log_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goal_activity_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       goal_monthly_targets: {
         Row: {
           created_at: string
@@ -257,6 +350,7 @@ export type Database = {
           is_active: boolean
           source: string
           title: string
+          unit: string | null
           user_id: string
         }
         Insert: {
@@ -267,6 +361,7 @@ export type Database = {
           is_active?: boolean
           source?: string
           title: string
+          unit?: string | null
           user_id: string
         }
         Update: {
@@ -277,6 +372,7 @@ export type Database = {
           is_active?: boolean
           source?: string
           title?: string
+          unit?: string | null
           user_id?: string
         }
         Relationships: [
@@ -336,6 +432,7 @@ export type Database = {
           family_id: string | null
           full_name: string
           id: string
+          onboarded_at: string | null
           push_enabled: boolean
           role: string
           timezone: string
@@ -347,6 +444,7 @@ export type Database = {
           family_id?: string | null
           full_name: string
           id: string
+          onboarded_at?: string | null
           push_enabled?: boolean
           role?: string
           timezone?: string
@@ -358,6 +456,7 @@ export type Database = {
           family_id?: string | null
           full_name?: string
           id?: string
+          onboarded_at?: string | null
           push_enabled?: boolean
           role?: string
           timezone?: string

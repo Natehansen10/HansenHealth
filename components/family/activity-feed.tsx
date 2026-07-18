@@ -17,7 +17,17 @@ type RawCheckin = {
   profiles: { full_name: string } | { full_name: string }[] | null;
 };
 
+type RawGoalActivity = {
+  id: string;
+  change_summary: string;
+  created_at: string;
+  user_id: string;
+  goal_id: string;
+  profiles: { full_name: string } | { full_name: string }[] | null;
+};
+
 type FeedCheckin = {
+  kind: "checkin";
   id: string;
   note: string | null;
   createdAt: string;
@@ -30,6 +40,17 @@ type FeedCheckin = {
   comments: { id: string; body: string; user_id: string; authorName: string }[];
 };
 
+type FeedGoalActivity = {
+  kind: "goal_activity";
+  id: string;
+  createdAt: string;
+  userId: string;
+  authorName: string;
+  changeSummary: string;
+};
+
+type FeedItem = FeedCheckin | FeedGoalActivity;
+
 function firstOf<T>(value: T | T[] | null): T | null {
   if (Array.isArray(value)) return value[0] ?? null;
   return value;
@@ -37,7 +58,7 @@ function firstOf<T>(value: T | T[] | null): T | null {
 
 function toFeedCheckin(raw: RawCheckin): Omit<
   FeedCheckin,
-  "likeCount" | "likedByMe" | "comments"
+  "kind" | "likeCount" | "likedByMe" | "comments"
 > {
   return {
     id: raw.id,
@@ -50,16 +71,34 @@ function toFeedCheckin(raw: RawCheckin): Omit<
   };
 }
 
+function toFeedGoalActivity(raw: RawGoalActivity): FeedGoalActivity {
+  return {
+    kind: "goal_activity",
+    id: raw.id,
+    createdAt: raw.created_at,
+    userId: raw.user_id,
+    authorName: firstOf(raw.profiles)?.full_name ?? "Someone",
+    changeSummary: raw.change_summary,
+  };
+}
+
 export function ActivityFeed({
   currentUserId,
+  currentUserName,
   familyMemberIds,
   initialCheckins,
+  initialGoalActivity,
 }: {
   currentUserId: string;
+  currentUserName: string;
   familyMemberIds: string[];
   initialCheckins: RawCheckin[];
+  initialGoalActivity: RawGoalActivity[];
 }) {
   const [checkins, setCheckins] = useState<FeedCheckin[]>([]);
+  const [goalActivity, setGoalActivity] = useState<FeedGoalActivity[]>(
+    initialGoalActivity.map(toFeedGoalActivity),
+  );
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -107,6 +146,7 @@ export function ActivityFeed({
           }));
 
         return {
+          kind: "checkin" as const,
           ...base,
           likeCount: checkinReactions.length,
           likedByMe: checkinReactions.some((r) => r.user_id === currentUserId),
@@ -121,6 +161,7 @@ export function ActivityFeed({
     loadReactionsAndComments();
 
     const checkinIds = new Set(initialCheckins.map((c) => c.id));
+    const goalActivityIds = new Set(initialGoalActivity.map((a) => a.id));
     const memberIds = new Set(familyMemberIds);
 
     const channel = supabase
@@ -161,6 +202,7 @@ export function ActivityFeed({
 
           setCheckins((prev) => [
             {
+              kind: "checkin",
               id: newRow.id,
               note: newRow.note,
               createdAt: newRow.created_at,
@@ -255,15 +297,54 @@ export function ActivityFeed({
           );
         },
       )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "goal_activity_log" },
+        async (payload) => {
+          const newRow = payload.new as {
+            id: string;
+            change_summary: string;
+            created_at: string;
+            user_id: string;
+            goal_id: string;
+          };
+
+          // Same defense-in-depth as the checkins subscription above: RLS
+          // already scopes what this subscription receives, but confirm the
+          // actor is a known family member before rendering.
+          if (!memberIds.has(newRow.user_id)) return;
+          if (goalActivityIds.has(newRow.id)) return;
+          goalActivityIds.add(newRow.id);
+
+          const { data: author } = await supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("id", newRow.user_id)
+            .maybeSingle();
+
+          setGoalActivity((prev) => [
+            {
+              kind: "goal_activity",
+              id: newRow.id,
+              createdAt: newRow.created_at,
+              userId: newRow.user_id,
+              authorName: author?.full_name ?? "Someone",
+              changeSummary: newRow.change_summary,
+            },
+            ...prev,
+          ]);
+        },
+      )
       .subscribe();
 
     return () => {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-    // Runs once per mount only: currentUserId/familyMemberIds/initialCheckins
-    // are a server-provided snapshot for this page load, not values that
-    // should re-trigger a resubscribe if they were to change identity.
+    // Runs once per mount only: currentUserId/familyMemberIds/initialCheckins/
+    // initialGoalActivity are a server-provided snapshot for this page load,
+    // not values that should re-trigger a resubscribe if they were to
+    // change identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -271,34 +352,48 @@ export function ActivityFeed({
     return <p className="text-sm text-muted">Loading activity...</p>;
   }
 
-  if (checkins.length === 0) {
-    return <p className="text-muted">No check-ins yet.</p>;
+  const items: FeedItem[] = [...checkins, ...goalActivity].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+
+  if (items.length === 0) {
+    return <p className="text-muted">No activity yet.</p>;
   }
 
   return (
     <div className="flex flex-col gap-4">
-      {checkins.map((checkin) => (
-        <Card key={checkin.id}>
-          <p className="text-foreground">
-            <span className="font-medium">{checkin.authorName}</span>{" "}
-            checked in on {checkin.goalTitle}
-            {checkin.note ? `: "${checkin.note}"` : ""}
+      {items.map((item) =>
+        item.kind === "goal_activity" ? (
+          <p key={item.id} className="text-sm text-muted">
+            <span className="font-medium text-foreground">
+              {item.authorName}
+            </span>{" "}
+            {item.changeSummary}
           </p>
-          <div className="mt-2 flex items-center gap-4">
-            <LikeButton
-              checkinId={checkin.id}
+        ) : (
+          <Card key={item.id}>
+            <p className="text-foreground">
+              <span className="font-medium">{item.authorName}</span>{" "}
+              checked in on {item.goalTitle}
+              {item.note ? `: "${item.note}"` : ""}
+            </p>
+            <div className="mt-2 flex items-center gap-4">
+              <LikeButton
+                checkinId={item.id}
+                currentUserId={currentUserId}
+                initialLikeCount={item.likeCount}
+                initialLikedByMe={item.likedByMe}
+              />
+            </div>
+            <CommentThread
+              checkinId={item.id}
               currentUserId={currentUserId}
-              initialLikeCount={checkin.likeCount}
-              initialLikedByMe={checkin.likedByMe}
+              currentUserName={currentUserName}
+              initialComments={item.comments}
             />
-          </div>
-          <CommentThread
-            checkinId={checkin.id}
-            currentUserId={currentUserId}
-            initialComments={checkin.comments}
-          />
-        </Card>
-      ))}
+          </Card>
+        ),
+      )}
     </div>
   );
 }

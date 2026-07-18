@@ -2,7 +2,22 @@ export type GoalProgress = {
   goalId: string;
   checkinCount: number;
   target: number | null;
+  // Optional display label for the countable thing (e.g. "Runs", "Miles").
+  // Purely cosmetic -- goalPercent/aggregatePercent never read this field,
+  // so adding it here doesn't change the math monthly-prize-calculation
+  // shares with the dashboard.
+  unit?: string | null;
 };
+
+// Formats "checkinCount of target" using the goal's unit label, falling
+// back to generic phrasing when no unit was set at goal-creation time.
+export function progressLabel(progress: GoalProgress): string {
+  const unit = progress.unit?.trim() || "check-ins";
+  if (progress.target === null) {
+    return `${progress.checkinCount} ${unit}`;
+  }
+  return `${progress.checkinCount}/${progress.target} ${unit}`;
+}
 
 // Per-goal percent, capped at 100. A goal with no target yet (snapshot not
 // run) contributes null and is excluded from the aggregate below.

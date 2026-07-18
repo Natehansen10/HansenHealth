@@ -13,10 +13,12 @@ type Comment = {
 export function CommentThread({
   checkinId,
   currentUserId,
+  currentUserName,
   initialComments,
 }: {
   checkinId: string;
   currentUserId: string;
+  currentUserName: string;
   initialComments: Comment[];
 }) {
   const [comments, setComments] = useState(initialComments);
@@ -40,7 +42,7 @@ export function CommentThread({
     if (!error && data) {
       setComments((prev) => [
         ...prev,
-        { ...data, authorName: "You" },
+        { ...data, authorName: currentUserName },
       ]);
       setBody("");
     }
@@ -49,11 +51,16 @@ export function CommentThread({
   return (
     <div className="mt-2">
       {comments.length > 0 && (
-        <ul className="mb-2 flex flex-col gap-1">
+        <ul className="mb-2 flex flex-col gap-2">
           {comments.map((comment) => (
-            <li key={comment.id} className="text-sm text-foreground">
-              <span className="font-medium">{comment.authorName}</span>{" "}
-              {comment.body}
+            <li
+              key={comment.id}
+              className="border-l-2 border-divider pl-2 text-sm"
+            >
+              <div className="font-heading text-xs font-semibold text-foreground">
+                {comment.authorName}
+              </div>
+              <div className="text-foreground">{comment.body}</div>
             </li>
           ))}
         </ul>

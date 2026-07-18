@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { GoalCard } from "@/components/goals/goal-card";
 import { Button } from "@/components/ui/button";
+import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
 
 export default async function GoalsPage() {
   const supabase = await createClient();
@@ -14,15 +15,23 @@ export default async function GoalsPage() {
     redirect("/login");
   }
 
-  const { data: goals } = await supabase
-    .from("goals")
-    .select("id, title, category, frequency_per_week, is_active")
-    .eq("user_id", user.id)
-    .order("is_active", { ascending: false })
-    .order("created_at", { ascending: false });
+  const [{ data: goals }, { data: profile }] = await Promise.all([
+    supabase
+      .from("goals")
+      .select("id, title, category, unit, frequency_per_week, is_active")
+      .eq("user_id", user.id)
+      .order("is_active", { ascending: false })
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("profiles")
+      .select("onboarded_at")
+      .eq("id", user.id)
+      .single(),
+  ]);
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
+      {!profile?.onboarded_at && <OnboardingFlow />}
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-foreground">My Goals</h1>
         <Link href="/goals/new">

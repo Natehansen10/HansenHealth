@@ -65,7 +65,7 @@ export default async function SettingsPage() {
           href="/settings/family"
           className="text-sm font-medium text-foreground underline"
         >
-          Manage family invites
+          Manage family invites &amp; prizes
         </Link>
       )}
     </div>

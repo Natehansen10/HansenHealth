@@ -37,7 +37,11 @@ export function CreateFamilyForm() {
       return;
     }
 
-    router.push("/");
+    // First-time success path only -- create_family raises if the caller
+    // already has a profile, so this redirect is inherently one-time.
+    // Per the onboarding flow, first-time users land on /goals, where the
+    // one-time notification/explainer popups are shown.
+    router.push("/goals");
     router.refresh();
   }
 
