@@ -45,6 +45,13 @@ export async function applyGoalChange(
 
   const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/apply-goal-change`;
 
+  // Timeout so a cold-starting/hung Edge Function can't leave the goal-card
+  // spinner stuck on "Saving..." forever (this call is awaited by the UI,
+  // unlike the fire-and-forget snapshot). 8s is generous enough for a cold
+  // start but bounded.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
   try {
     const response = await fetch(url, {
       method: "POST",
@@ -53,6 +60,7 @@ export async function applyGoalChange(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ goalId, oldFrequency, newFrequency }),
+      signal: controller.signal,
     });
 
     if (!response.ok) {
@@ -65,6 +73,8 @@ export async function applyGoalChange(
   } catch (err) {
     console.error("apply-goal-change request failed", err);
     return { error: "Could not recalculate this month's target." };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -75,6 +85,18 @@ export async function applyGoalChange(
 export async function triggerTargetSnapshot() {
   const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/monthly-target-snapshot`;
 
+  // Hard timeout on the Edge Function call. This matters even though callers
+  // invoke this "fire-and-forget" (without awaiting): Next.js's App Router
+  // tracks in-flight Server Action requests and holds the subsequent
+  // router.push()/router.refresh() transition open until they settle. A
+  // cold-starting or hung Edge Function (no timeout of its own) would
+  // therefore pin the client on "Creating..." indefinitely even though the
+  // goal row was already committed -- the exact symptom reported. Cap it so
+  // the transition can always complete; the daily cron backfills any goal
+  // this call doesn't reach in time.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 4000);
+
   try {
     const response = await fetch(url, {
       method: "POST",
@@ -83,6 +105,7 @@ export async function triggerTargetSnapshot() {
         "Content-Type": "application/json",
       },
       body: "{}",
+      signal: controller.signal,
     });
 
     if (!response.ok) {
@@ -94,7 +117,10 @@ export async function triggerTargetSnapshot() {
     }
   } catch (err) {
     // Best-effort: a goal is still valid without an immediate target row --
-    // the next cron run will pick it up. Don't fail goal creation over this.
+    // the next cron run will pick it up. Don't fail goal creation over this
+    // (includes the AbortError from the timeout above).
     console.error("monthly-target-snapshot request failed", err);
+  } finally {
+    clearTimeout(timeout);
   }
 }

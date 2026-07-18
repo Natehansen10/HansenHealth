@@ -74,15 +74,24 @@ export function NewGoalForm({ templates }: { templates: Template[] }) {
         return;
       }
 
-      // Best-effort recalculation -- don't block navigation on it. The Edge
-      // Function call has no timeout, and a slow/cold-starting invocation
-      // would otherwise leave the user stuck on "Creating..." even though
-      // the goal row above was already inserted successfully. The cron-
-      // scheduled snapshot will pick up any goal this call misses.
-      triggerTargetSnapshot();
-
+      // Navigate away from the form immediately on a successful insert.
+      // Doing this *before* triggering the target snapshot is deliberate:
+      // triggerTargetSnapshot is a Server Action, and Next's App Router
+      // holds a router transition open until in-flight Server Actions
+      // settle -- so firing it first (even without awaiting) was pinning
+      // the client on "Creating..." until the (un-timed-out) Edge Function
+      // responded, even though the goal was already saved. router.push
+      // starts the navigation; the form unmounts, so its "saving" state no
+      // longer matters.
       router.push("/goals");
+      // Ensure /goals re-renders server-side so the just-created goal shows
+      // up without a manual page refresh (App Router caches route segments).
       router.refresh();
+
+      // Best-effort recalculation, now capped with an internal timeout (see
+      // triggerTargetSnapshot). The daily cron backfills any goal this
+      // doesn't reach in time, so we don't await it or block on it.
+      triggerTargetSnapshot();
     } catch (err) {
       // A thrown rejection (e.g. a network failure on auth.getUser() or the
       // insert itself) previously left the button stuck on "Creating..."
