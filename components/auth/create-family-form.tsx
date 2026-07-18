@@ -5,12 +5,9 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { BlueprintCorners } from "@/components/ui/blueprint-corners";
 import { Button } from "@/components/ui/button";
+import { US_TIMEZONES, DEFAULT_US_TIMEZONE } from "@/lib/utils/timezones";
 
-const DEFAULT_TIMEZONE = "America/Denver";
-
-const TIMEZONES = Intl.supportedValuesOf
-  ? Intl.supportedValuesOf("timeZone")
-  : [DEFAULT_TIMEZONE];
+const DEFAULT_TIMEZONE = DEFAULT_US_TIMEZONE;
 
 export function CreateFamilyForm() {
   const router = useRouter();
@@ -88,9 +85,9 @@ export function CreateFamilyForm() {
         onChange={(e) => setTimezone(e.target.value)}
         className="input mb-4 w-full"
       >
-        {TIMEZONES.map((tz) => (
-          <option key={tz} value={tz}>
-            {tz}
+        {US_TIMEZONES.map((tz) => (
+          <option key={tz.value} value={tz.value}>
+            {tz.label}
           </option>
         ))}
       </select>

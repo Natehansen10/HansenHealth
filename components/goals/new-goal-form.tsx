@@ -73,7 +73,12 @@ export function NewGoalForm({ templates }: { templates: Template[] }) {
       return;
     }
 
-    await triggerTargetSnapshot();
+    // Best-effort recalculation -- don't block navigation on it. The Edge
+    // Function call has no timeout, and a slow/cold-starting invocation
+    // would otherwise leave the user stuck on "Creating..." even though
+    // the goal row above was already inserted successfully. The cron-
+    // scheduled snapshot will pick up any goal this call misses.
+    triggerTargetSnapshot();
 
     router.push("/goals");
     router.refresh();
