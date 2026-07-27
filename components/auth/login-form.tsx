@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 export function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next");
+  const callbackError = searchParams.get("error");
 
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
@@ -50,6 +51,13 @@ export function LoginForm() {
       <h1 className="mb-4 text-xl font-semibold text-foreground">
         Family Health Tracker
       </h1>
+      {callbackError && (
+        <p className="mb-4 text-sm text-red-600">
+          {callbackError === "link_expired"
+            ? "That sign-in link has expired or was already used. Request a new one below."
+            : "We couldn't sign you in. Request a new link below."}
+        </p>
+      )}
       <label htmlFor="email" className="mb-1 block text-sm text-muted">
         Email
       </label>

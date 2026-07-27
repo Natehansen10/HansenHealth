@@ -13,6 +13,9 @@ export default async function InvitePage({
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Round-tripping through /login is safe even for an already-accepted
+  // invite: the callback sends users who have a profile to the app, and this
+  // page redirects them there too, so `next` can't strand them in a loop.
   if (!user) {
     redirect(`/login?next=${encodeURIComponent(`/invite/${token}`)}`);
   }
