@@ -1,8 +1,11 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { currentMonthInTimezone } from "@/lib/utils/dates";
 import { aggregatePercent } from "@/lib/utils/progress";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ProgressBar } from "@/components/ui/progress-bar";
 
 // Formats a `YYYY-MM-01` month string as e.g. "July 2026", without pulling
@@ -116,33 +119,53 @@ export default async function PrizesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-semibold text-foreground">Prizes</h1>
+    <div className="mx-auto max-w-2xl px-4 py-6 sm:py-8">
+      <h1 className="mb-6 text-xl font-semibold text-foreground sm:text-2xl">
+        Prizes
+      </h1>
 
       <h2 className="mb-3 text-lg font-semibold text-foreground">
         Current month standings
       </h2>
       <div className="mb-8 flex flex-col gap-3">
-        {standings.map((s) => (
-          <Card key={s.userId}>
-            <div className="mb-2 flex w-full items-center justify-between gap-3">
-              <span className="font-medium text-foreground">{s.fullName}</span>
-              <span className="flex-shrink-0 text-sm text-muted">
-                {s.hasGoals ? `${s.percent ?? 0}%` : "No goals yet"}
-              </span>
-            </div>
-            <ProgressBar percent={s.percent} />
-          </Card>
-        ))}
+        {standings.length === 0 ? (
+          <EmptyState
+            title="No family members yet"
+            description="Standings appear once there's someone to stand. Invite the family to get started."
+            action={
+              <Link href="/settings/family">
+                <Button type="button">Invite someone</Button>
+              </Link>
+            }
+          />
+        ) : (
+          standings.map((s) => (
+            <Card key={s.userId}>
+              <div className="mb-2 flex w-full items-center justify-between gap-3">
+                <span className="font-medium text-foreground">
+                  {s.fullName}
+                </span>
+                <span className="flex-shrink-0 text-sm text-muted">
+                  {s.hasGoals ? `${s.percent ?? 0}%` : "No goals yet"}
+                </span>
+              </div>
+              <ProgressBar percent={s.percent} />
+            </Card>
+          ))
+        )}
       </div>
 
       <h2 className="mb-3 text-lg font-semibold text-foreground">
         Prize history
       </h2>
       {monthOrder.length === 0 ? (
-        <p className="text-muted">
-          No prizes awarded yet — keep logging check-ins!
-        </p>
+        // No action offered on purpose: prize history fills itself in at
+        // month end via the monthly-prize-calculation Edge Function. There
+        // is nothing for the user to do here but keep checking in.
+        <EmptyState
+          title="No prizes awarded yet"
+          description="Everyone at 100% or above at the end of a month wins. Winners land here automatically on the 1st."
+        />
       ) : (
         <div className="flex flex-col gap-3">
           {monthOrder.map((month) => (

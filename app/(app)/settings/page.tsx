@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { NotificationPreferencesForm } from "@/components/settings/notification-preferences-form";
 import { PushSubscribeButton } from "@/components/settings/push-subscribe-button";
+import { HealthPrivacyForm } from "@/components/settings/health-privacy-form";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -17,7 +18,9 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("push_enabled, email_enabled, timezone, role")
+    .select(
+      "push_enabled, email_enabled, timezone, role, health_visibility, weight_unit",
+    )
     .eq("id", user.id)
     .single();
 
@@ -26,8 +29,8 @@ export default async function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-lg px-4 py-8">
-      <h1 className="mb-6 text-2xl font-semibold text-foreground">
+    <div className="mx-auto max-w-lg px-4 py-6 sm:py-8">
+      <h1 className="mb-6 text-xl font-semibold text-foreground sm:text-2xl">
         Settings
       </h1>
 
@@ -36,6 +39,20 @@ export default async function SettingsPage() {
           Timezone
         </h2>
         <p className="text-sm text-muted">{profile.timezone}</p>
+      </Card>
+
+      <Card className="mb-6">
+        <h2 className="mb-1 text-lg font-semibold text-foreground">
+          Health log
+        </h2>
+        <p className="mb-3 text-sm text-muted">
+          Your weight, vitals, sleep, activity and personal metrics. Separate
+          from goal check-ins, which are always visible to your family.
+        </p>
+        <HealthPrivacyForm
+          initialVisibility={profile.health_visibility}
+          initialWeightUnit={profile.weight_unit}
+        />
       </Card>
 
       <Card className="mb-6">
