@@ -3,8 +3,28 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { currentMonthInTimezone } from "@/lib/utils/dates";
 import { goalPercent } from "@/lib/utils/progress";
+import { getSharedHealthSummary, seriesFrom } from "@/lib/data/health";
+import { HEALTH_METRIC_BY_KEY, type HealthMetricKey } from "@/lib/utils/health";
+import {
+  BloodPressureCard,
+  MetricTrendCard,
+} from "@/components/health/trend-card";
 import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ProgressBar } from "@/components/ui/progress-bar";
+
+// Deliberately the same set the owner sees on their own /health page.
+// Sharing is all-or-nothing at the RLS layer, so hiding a metric here
+// would only make the owner believe something is private that a family
+// member can still read straight off the API -- worse than showing it.
+const SHARED_TREND_KEYS: HealthMetricKey[] = [
+  "weight",
+  "body_fat_percent",
+  "resting_heart_rate",
+  "sleep_hours",
+  "sleep_quality",
+  "steps",
+];
 
 export default async function FamilyMemberPage({
   params,
@@ -79,18 +99,40 @@ export default async function FamilyMemberPage({
     countByGoal.set(c.goal_id, (countByGoal.get(c.goal_id) ?? 0) + 1);
   }
 
+  // Returns null unless this member has set health_visibility = 'family'.
+  // RLS would hide the rows either way; the null distinguishes "not shared"
+  // (render nothing at all) from "shared but empty" (render an empty state).
+  const sharedHealth = await getSharedHealthSummary(userId, timezone, 90);
+  const sharedTrends = sharedHealth
+    ? SHARED_TREND_KEYS.map((key) => ({
+        key,
+        def: HEALTH_METRIC_BY_KEY[key],
+        points: seriesFrom(sharedHealth.logs, key),
+      })).filter((t) => t.points.length > 0)
+    : [];
+  const sharedSystolic = sharedHealth
+    ? seriesFrom(sharedHealth.logs, "systolic")
+    : [];
+  const sharedDiastolic = sharedHealth
+    ? seriesFrom(sharedHealth.logs, "diastolic")
+    : [];
+
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
-      <Link href="/" className="mb-4 inline-block text-sm text-muted">
+    <div className="mx-auto max-w-2xl px-4 py-6 sm:py-8">
+      <Link href="/" className="mb-4 inline-flex min-h-11 items-center text-sm text-muted">
         &larr; Back to dashboard
       </Link>
-      <h1 className="mb-6 text-2xl font-semibold text-foreground">
+      <h1 className="mb-6 text-xl font-semibold text-foreground sm:text-2xl">
         {member.full_name}
       </h1>
 
       <h2 className="mb-3 text-lg font-semibold text-foreground">Goals</h2>
       {!goals || goals.length === 0 ? (
-        <p className="mb-8 text-muted">No goals yet.</p>
+        <EmptyState
+          className="mb-8"
+          title="No goals yet"
+          description={`${member.full_name} hasn't set a goal yet.`}
+        />
       ) : (
         <div className="mb-8 flex flex-col gap-4">
           {goals.map((goal) => {
@@ -124,9 +166,50 @@ export default async function FamilyMemberPage({
         </div>
       )}
 
+      {sharedHealth && (
+        <>
+          <h2 className="mb-1 text-lg font-semibold text-foreground">
+            Health
+          </h2>
+          <p className="mb-3 text-sm text-muted">
+            {member.full_name} shares their health log with the family. Last
+            90 days.
+          </p>
+          {sharedTrends.length === 0 &&
+          sharedSystolic.length === 0 &&
+          sharedDiastolic.length === 0 ? (
+            <EmptyState
+              className="mb-8"
+              title="Nothing logged yet"
+              description={`${member.full_name} shares their health log but hasn't recorded anything in the last 90 days.`}
+            />
+          ) : (
+            <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {sharedTrends.map((trend) => (
+                <MetricTrendCard
+                  key={trend.key}
+                  def={trend.def}
+                  points={trend.points}
+                  weightUnit={sharedHealth.weightUnit}
+                />
+              ))}
+              {(sharedSystolic.length > 0 || sharedDiastolic.length > 0) && (
+                <BloodPressureCard
+                  systolic={sharedSystolic}
+                  diastolic={sharedDiastolic}
+                />
+              )}
+            </div>
+          )}
+        </>
+      )}
+
       <h2 className="mb-3 text-lg font-semibold text-foreground">History</h2>
       {!history || history.length === 0 ? (
-        <p className="text-muted">No check-ins yet.</p>
+        <EmptyState
+          title="No check-ins yet"
+          description={`${member.full_name}'s check-ins will show up here.`}
+        />
       ) : (
         <ul className="flex flex-col gap-2">
           {history.map((entry) => {

@@ -1,8 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SkeletonCard } from "@/components/ui/skeleton";
 import { LikeButton } from "@/components/family/like-button";
 import { CommentThread } from "@/components/family/comment-thread";
 
@@ -100,6 +105,13 @@ export function ActivityFeed({
     initialGoalActivity.map(toFeedGoalActivity),
   );
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  // Realtime health. The feed still renders its server-provided snapshot
+  // when this goes bad -- what's lost is only the live updating, so this
+  // surfaces as a banner above the feed rather than replacing it.
+  const [connection, setConnection] = useState<"connecting" | "live" | "down">(
+    "connecting",
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -115,7 +127,7 @@ export function ActivityFeed({
         return;
       }
 
-      const [{ data: reactions }, { data: comments }] = await Promise.all([
+      const [{ data: reactions, error: reactionsError }, { data: comments }] = await Promise.all([
         supabase
           .from("reactions")
           .select("checkin_id, user_id")
@@ -128,6 +140,14 @@ export function ActivityFeed({
       ]);
 
       if (cancelled) return;
+
+      // A failed reactions/comments fetch shouldn't blank the feed -- the
+      // check-ins themselves came from the server render and are still
+      // good. Note it and fall through with zero likes/comments.
+      if (reactionsError) {
+        console.error("activity feed reactions load failed", reactionsError);
+        setLoadError(true);
+      }
 
       const built = initialCheckins.map((raw) => {
         const base = toFeedCheckin(raw);
@@ -335,7 +355,21 @@ export function ActivityFeed({
           ]);
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (cancelled) return;
+        // CHANNEL_ERROR / TIMED_OUT / CLOSED all mean the same thing to the
+        // user: new activity will stop appearing on its own until they
+        // reload. SUBSCRIBED after a retry clears it again.
+        if (status === "SUBSCRIBED") {
+          setConnection("live");
+        } else if (
+          status === "CHANNEL_ERROR" ||
+          status === "TIMED_OUT" ||
+          status === "CLOSED"
+        ) {
+          setConnection("down");
+        }
+      });
 
     return () => {
       cancelled = true;
@@ -349,19 +383,64 @@ export function ActivityFeed({
   }, []);
 
   if (!loaded) {
-    return <p className="text-sm text-muted">Loading activity...</p>;
+    // Skeletons rather than a spinner: the feed's shape is known (a column
+    // of cards), so this holds the layout instead of collapsing it.
+    return (
+      <div className="flex flex-col gap-4">
+        <SkeletonCard lines={2} />
+        <SkeletonCard lines={2} />
+        <SkeletonCard lines={1} />
+      </div>
+    );
   }
 
   const items: FeedItem[] = [...checkins, ...goalActivity].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
 
+  const banner =
+    connection === "down" ? (
+      <Alert
+        tone="warning"
+        title="Live updates are off"
+        action={
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => window.location.reload()}
+          >
+            Reload
+          </Button>
+        }
+      >
+        New check-ins won&rsquo;t appear until you reload.
+      </Alert>
+    ) : loadError ? (
+      <Alert tone="warning" title="Some details didn't load">
+        Likes and comments may be missing or out of date.
+      </Alert>
+    ) : null;
+
   if (items.length === 0) {
-    return <p className="text-muted">No activity yet.</p>;
+    return (
+      <div className="flex flex-col gap-4">
+        {banner}
+        <EmptyState
+          title="No activity yet"
+          description="Check-ins, likes and comments from everyone in the family show up here as they happen."
+          action={
+            <Link href="/log">
+              <Button type="button">Log today</Button>
+            </Link>
+          }
+        />
+      </div>
+    );
   }
 
   return (
     <div className="flex flex-col gap-4">
+      {banner}
       {items.map((item) =>
         item.kind === "goal_activity" ? (
           <p key={item.id} className="text-sm text-muted">

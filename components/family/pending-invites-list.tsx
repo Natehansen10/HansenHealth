@@ -1,3 +1,5 @@
+import { EmptyState } from "@/components/ui/empty-state";
+
 type Invite = {
   id: string;
   email: string;
@@ -7,7 +9,15 @@ type Invite = {
 
 export function PendingInvitesList({ invites }: { invites: Invite[] }) {
   if (invites.length === 0) {
-    return <p className="text-sm text-muted">No pending invites.</p>;
+    // No action button: the invite form sits directly above this list on
+    // the only page that renders it, so a CTA here would point at something
+    // already on screen.
+    return (
+      <EmptyState
+        title="No invites yet"
+        description="Invites you send show up here with their status until they're accepted."
+      />
+    );
   }
 
   return (
@@ -15,10 +25,12 @@ export function PendingInvitesList({ invites }: { invites: Invite[] }) {
       {invites.map((invite) => (
         <li
           key={invite.id}
-          className="flex items-center justify-between px-4 py-3"
+          className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-3"
         >
-          <span className="text-foreground">{invite.email}</span>
-          <span className="text-sm text-muted capitalize">
+          <span className="min-w-0 [overflow-wrap:anywhere] text-foreground">
+            {invite.email}
+          </span>
+          <span className="flex-shrink-0 text-sm text-muted capitalize">
             {invite.status}
           </span>
         </li>

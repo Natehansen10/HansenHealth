@@ -1,12 +1,13 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { currentMonthInTimezone } from "@/lib/utils/dates";
 import { aggregatePercent, goalPercent } from "@/lib/utils/progress";
-import { getQuickCheckinData } from "@/lib/data/checkin-status";
 import { FamilySummaryBar } from "@/components/family/family-summary-bar";
 import { ActivityFeed } from "@/components/family/activity-feed";
 import { PrizeBanner } from "@/components/family/prize-banner";
-import { QuickCheckinModal } from "@/components/checkins/quick-checkin-modal";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -140,22 +141,22 @@ export default async function DashboardPage() {
     .order("created_at", { ascending: false })
     .limit(20);
 
-  const quickCheckin = await getQuickCheckinData(user.id, timezone);
-
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
-      <h1 className="mb-2 text-2xl font-semibold text-foreground">
+    <div className="mx-auto max-w-2xl px-4 py-6 sm:py-8">
+      <h1 className="mb-1 text-xl font-semibold text-foreground sm:text-2xl">
         {family?.name ?? "Your family"}
       </h1>
       <p className="mb-6 text-muted">Welcome, {profile.full_name}.</p>
 
-      <QuickCheckinModal
-        today={quickCheckin.today}
-        goals={quickCheckin.goals}
-        targetByGoal={Object.fromEntries(quickCheckin.targetByGoal)}
-        countByGoal={Object.fromEntries(quickCheckin.countByGoal)}
-        todayCheckinByGoal={Object.fromEntries(quickCheckin.todayCheckinByGoal)}
-      />
+      {/* Single entry point for everything loggable -- goal check-ins,
+          weight, BP, sleep, steps, custom metrics. This replaced the
+          dashboard's quick check-in modal, which could only do the first
+          of those. */}
+      <Link href="/log" className="mb-6 block">
+        <Button type="button" className="w-full">
+          Log today
+        </Button>
+      </Link>
 
       {(prizes?.individual_prize_description ||
         prizes?.group_prize_description) && (
@@ -167,9 +168,34 @@ export default async function DashboardPage() {
       )}
 
       <div className="mb-8 flex flex-col gap-3">
-        {memberSummaries.map((summary) => (
-          <FamilySummaryBar key={summary.userId} summary={summary} />
-        ))}
+        {memberSummaries.length === 0 ? (
+          <EmptyState
+            title="No family members yet"
+            description="Invite the rest of the family and everyone's progress will show up here."
+            action={
+              <Link href="/settings/family">
+                <Button type="button">Invite someone</Button>
+              </Link>
+            }
+          />
+        ) : membersWithGoals.length === 0 ? (
+          // Members exist but nobody has set a goal yet -- a column of
+          // empty progress bars reads as broken, so say what's actually
+          // missing.
+          <EmptyState
+            title="No goals set yet"
+            description="Once someone in the family creates a goal, everyone's monthly progress shows up here."
+            action={
+              <Link href="/goals/new">
+                <Button type="button">Create the first goal</Button>
+              </Link>
+            }
+          />
+        ) : (
+          memberSummaries.map((summary) => (
+            <FamilySummaryBar key={summary.userId} summary={summary} />
+          ))
+        )}
       </div>
 
       <h2 className="mb-3 text-lg font-semibold text-foreground">

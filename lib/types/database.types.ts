@@ -385,6 +385,65 @@ export type Database = {
           },
         ]
       }
+      health_logs: {
+        Row: {
+          body_fat_percent: number | null
+          created_at: string
+          diastolic: number | null
+          id: string
+          log_date: string
+          note: string | null
+          resting_heart_rate: number | null
+          sleep_hours: number | null
+          sleep_quality: number | null
+          steps: number | null
+          systolic: number | null
+          updated_at: string
+          user_id: string
+          weight: number | null
+        }
+        Insert: {
+          body_fat_percent?: number | null
+          created_at?: string
+          diastolic?: number | null
+          id?: string
+          log_date: string
+          note?: string | null
+          resting_heart_rate?: number | null
+          sleep_hours?: number | null
+          sleep_quality?: number | null
+          steps?: number | null
+          systolic?: number | null
+          updated_at?: string
+          user_id: string
+          weight?: number | null
+        }
+        Update: {
+          body_fat_percent?: number | null
+          created_at?: string
+          diastolic?: number | null
+          id?: string
+          log_date?: string
+          note?: string | null
+          resting_heart_rate?: number | null
+          sleep_hours?: number | null
+          sleep_quality?: number | null
+          steps?: number | null
+          systolic?: number | null
+          updated_at?: string
+          user_id?: string
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       monthly_prizes: {
         Row: {
           awarded_at: string
@@ -424,6 +483,92 @@ export type Database = {
           },
         ]
       }
+      personal_metric_entries: {
+        Row: {
+          created_at: string
+          entry_date: string
+          id: string
+          metric_id: string
+          note: string | null
+          user_id: string
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          entry_date: string
+          id?: string
+          metric_id: string
+          note?: string | null
+          user_id: string
+          value: number
+        }
+        Update: {
+          created_at?: string
+          entry_date?: string
+          id?: string
+          metric_id?: string
+          note?: string | null
+          user_id?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personal_metric_entries_metric_owner_fkey"
+            columns: ["metric_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "personal_metrics"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "personal_metric_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personal_metrics: {
+        Row: {
+          created_at: string
+          frequency: string
+          id: string
+          is_active: boolean
+          name: string
+          target_value: number | null
+          unit: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          frequency?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          target_value?: number | null
+          unit?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          frequency?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          target_value?: number | null
+          unit?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personal_metrics_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -431,11 +576,13 @@ export type Database = {
           email_enabled: boolean
           family_id: string | null
           full_name: string
+          health_visibility: string
           id: string
           onboarded_at: string | null
           push_enabled: boolean
           role: string
           timezone: string
+          weight_unit: string
         }
         Insert: {
           avatar_url?: string | null
@@ -443,11 +590,13 @@ export type Database = {
           email_enabled?: boolean
           family_id?: string | null
           full_name: string
+          health_visibility?: string
           id: string
           onboarded_at?: string | null
           push_enabled?: boolean
           role?: string
           timezone?: string
+          weight_unit?: string
         }
         Update: {
           avatar_url?: string | null
@@ -455,11 +604,13 @@ export type Database = {
           email_enabled?: boolean
           family_id?: string | null
           full_name?: string
+          health_visibility?: string
           id?: string
           onboarded_at?: string | null
           push_enabled?: boolean
           role?: string
           timezone?: string
+          weight_unit?: string
         }
         Relationships: [
           {
@@ -564,6 +715,10 @@ export type Database = {
         Returns: string
       }
       current_family_id: { Args: never; Returns: string }
+      health_owner_visible_to_me: {
+        Args: { owner_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

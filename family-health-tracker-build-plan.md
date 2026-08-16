@@ -519,3 +519,249 @@ Route groups `(auth)` and `(app)` separate unauthenticated screens from the auth
 ## Next Step
 
 Phase 1: Supabase schema + Next.js scaffold + auth. Confirm the schema above looks right, then say go and we build it.
+
+---
+
+# Phase 7 — Polish and launch (built 2026-08-15)
+
+Phase 7 folded in a scope expansion agreed at the start of the phase: the app
+grew a **personal health log** alongside the family exercise-goal game, and
+the responsive/empty/loading/error pass was done across the new and existing
+routes together rather than as two passes.
+
+## 7a. Personal health log schema
+
+Migrations `20260815000000_personal_health_logs.sql` and
+`20260815000001_health_log_rls_hardening.sql`.
+
+Kept deliberately separate from `goals`/`checkins`. Those are the family game:
+family-visible, month targets owned by Edge Functions, prize logic on top.
+The health log is personal data with a different privacy default, a different
+edit model, and no connection to prize eligibility. Nothing below feeds
+`goal_monthly_targets`, `monthly_prizes`, or `aggregatePercent`.
+
+```sql
+-- One row per user per day. Column-per-metric rather than a tall
+-- (user, date, metric, value) table: the log form writes these together and
+-- every read is "last N days of one or more metrics for one user".
+create table health_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references profiles(id) on delete cascade,
+  log_date date not null,
+  weight numeric(6,2) check (weight > 0 and weight <= 2000),
+  body_fat_percent numeric(4,1) check (body_fat_percent >= 0 and body_fat_percent <= 100),
+  systolic int check (systolic between 40 and 300),
+  diastolic int check (diastolic between 20 and 250),
+  resting_heart_rate int check (resting_heart_rate between 20 and 250),
+  sleep_hours numeric(4,2) check (sleep_hours >= 0 and sleep_hours <= 24),
+  sleep_quality int check (sleep_quality between 1 and 5),
+  steps int check (steps >= 0 and steps <= 500000),
+  note text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),  -- maintained by trigger
+  unique (user_id, log_date)
+);
+
+-- User-defined trackable metric. target_value is a flat number the user
+-- types for their own reference -- NOT the derived monthly target concept
+-- from goal_monthly_targets, and not read by any Edge Function.
+create table personal_metrics (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references profiles(id) on delete cascade,
+  name text not null check (length(trim(name)) > 0),
+  unit text,
+  target_value numeric,
+  frequency text not null default 'daily' check (frequency in ('daily','weekly','monthly')),
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table personal_metric_entries (
+  id uuid primary key default gen_random_uuid(),
+  metric_id uuid not null,
+  user_id uuid not null references profiles(id) on delete cascade,
+  entry_date date not null,
+  value numeric not null,
+  note text,
+  created_at timestamptz not null default now(),
+  unique (metric_id, entry_date),
+  -- Composite FK, not a plain metric_id reference: it makes
+  -- "entries.user_id always equals its metric's owner" hold for
+  -- service-role writes too, not just RLS-governed ones.
+  constraint personal_metric_entries_metric_owner_fkey
+    foreign key (metric_id, user_id)
+    references personal_metrics (id, user_id) on delete cascade
+);
+
+alter table profiles
+  add column health_visibility text not null default 'private'
+    check (health_visibility in ('private','family')),
+  add column weight_unit text not null default 'lb'
+    check (weight_unit in ('lb','kg'));
+```
+
+`weight_unit` is a **display label only**. This app has no unit-conversion
+logic anywhere (same standing decision as `checkins.distance`) — switching it
+relabels charts and converts nothing.
+
+## 7b. Health log RLS
+
+Read and write are different conditions here, so they are separate policies
+per table rather than one `for all`. Read is governed by a helper; **write is
+owner-only always**, including when the owner has opted into sharing.
+
+```sql
+create or replace function health_owner_visible_to_me(owner_id uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public, pg_temp
+as $$
+  select
+    owner_id = auth.uid()
+    or exists (
+      select 1 from profiles p
+      where p.id = owner_id
+        and p.family_id = current_family_id()
+        and p.health_visibility = 'family'
+    );
+$$;
+```
+
+Per table (`health_logs`, `personal_metrics`, `personal_metric_entries`):
+
+- `select using (health_owner_visible_to_me(user_id))`
+- `insert with check (user_id = auth.uid())`
+- `update using (user_id = auth.uid()) with check (user_id = auth.uid())`
+- `delete using (user_id = auth.uid())`
+
+`personal_metric_entries` additionally carries
+`and metric_id in (select id from personal_metrics where user_id = auth.uid())`
+on insert, update **and** delete, so an entry can neither be attached to
+someone else's metric nor stamped with someone else's `user_id`.
+
+Two properties worth not breaking:
+
+- **The null-family case is fail-closed by SQL null semantics, not by an
+  explicit guard.** For a user with no family, `p.family_id =
+  current_family_id()` is NULL rather than true. Replacing that equality with
+  `is not distinct from`, or wrapping `current_family_id()` in a `coalesce`,
+  would turn this into a cross-tenant read of every family-less user's health
+  log.
+- **No 24-hour edit window here, unlike `checkins`.** That rule exists because
+  a check-in is a public claim to the family scoreboard feeding prize
+  eligibility. A private weight entry has no scoreboard; back-filling last
+  week's numbers is expected use.
+
+Verified against hosted with real authenticated sessions (three throwaway
+users across two throwaway families, all cleaned up): owner read/write works;
+a same-family member sees nothing while the owner is private, sees the log
+once the owner opts in, and still cannot update or delete it; a **different
+family** sees nothing either way. This is the first time cross-tenant
+isolation has actually been exercised on this project — CLAUDE.md previously
+recorded it as untestable for lack of a second family.
+
+One behavioural consequence of the `revoke ... from public` on the helper:
+an **anonymous** PostgREST request to any of the three tables now fails with
+`42501 permission denied for function health_owner_visible_to_me` instead of
+returning an empty array. That is fail-closed and fine — every app path
+redirects to `/login` before querying — but it is a different error shape than
+the other tables give, which return `[]` to anon.
+
+## 7c. New routes
+
+```
+/log       unified entry point: goal check-ins, body, vitals, sleep,
+           activity, custom metrics — tabbed, one save per section
+/health    trends (weight, body fat, BP, resting HR, sleep, sleep quality,
+           steps), personal-metric management, recent entries
+```
+
+`/log` replaced the dashboard's quick check-in modal
+(`components/checkins/quick-checkin-modal.tsx`, deleted). Its "Check in"
+section reuses the same `GoalCheckinRow` against the same
+`getQuickCheckinData`, so nothing was lost — the dashboard CTA now points at
+`/log` instead of opening a modal that could only do check-ins.
+
+Navigation changed shape for mobile: the hamburger menu is gone, replaced by a
+fixed five-item bottom tab bar (`components/layout/bottom-nav.tsx`) on phones,
+with the same links rendered inline in the top bar from `sm:` up. Settings and
+sign-out stay in the top bar — five targets is the most that stays comfortably
+tappable at 320px, and settings is the rarest destination.
+
+## 7d. Charts without a charting library
+
+`components/ui/line-chart.tsx` is hand-rolled SVG (`LineChart` + `Sparkline`),
+both Server Components shipping zero JS. Recharts (~90kb) or Chart.js (~70kb)
+would have been most of the app's JS budget for what is a polyline through a
+few hundred dated points.
+
+The load-bearing detail: the `<svg>` uses `preserveAspectRatio="none"` so the
+plot stretches to its container at a fixed pixel height. That non-uniform
+scale distorts anything with intrinsic proportions, so every stroked path
+carries `vector-effect="non-scaling-stroke"`, and there is **no `<text>`, no
+`<circle>` and no marker inside the SVG** — all labels are HTML rendered
+around it. Adding a `<text>` there will look right at one width and visibly
+wrong at another.
+
+## 7e. Production deploy checklist
+
+Environment (Vercel project settings — the same four the app needs locally in
+`.env.local`):
+
+- [ ] `NEXT_PUBLIC_SUPABASE_URL`
+- [ ] `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- [ ] `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
+- [ ] `SUPABASE_SERVICE_ROLE_KEY` (server-only — confirm it is **not** in the
+      browser bundle; it belongs to Server Actions only)
+
+Supabase (hosted, `krcuyqsmahavlahkpoyc`):
+
+- [ ] `supabase db push` — all migrations applied through
+      `20260815000001_health_log_rls_hardening`
+- [ ] `supabase gen types typescript --project-id …` regenerated and committed
+- [ ] Edge Function secrets set: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
+      `SUPABASE_SECRET_KEY`, `RESEND_API_KEY`, `RESEND_FROM_ADDRESS`,
+      `SITE_URL`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`
+- [ ] `service_role_key` present in Vault (the pg_cron jobs read it from there)
+- [ ] pg_cron jobs scheduled: `monthly-target-snapshot`,
+      `monthly-prize-calculation`
+- [ ] `notify-activity` still returns 401 for no key / garbage key / anon key
+      (it deploys with `verify_jwt = false`; its own `apikey` check is the
+      only thing in front of the public internet)
+- [ ] Auth redirect URLs include the production origin, or magic links land on
+      localhost
+
+Build and runtime:
+
+- [ ] `npm run typecheck` clean
+- [ ] `npm run lint` clean
+- [ ] `npm run build` succeeds
+- [ ] Manual pass on a real phone: bottom tab bar reachable one-handed, no
+      horizontal scroll, safe-area inset respected in standalone (home-screen)
+      mode
+
+Known follow-ups, not blockers:
+
+- **`middleware.ts` → `proxy.ts`.** Next 16.2 warns the `middleware` file
+  convention is deprecated. Deliberately not renamed in Phase 7: that file
+  carries auth session refresh, and bundling an auth-path rename into a UI
+  phase is how a working login breaks quietly. Do it as its own change with a
+  magic-link round trip to verify.
+- **`prevent_profiles_self_escalation()` is a deny-list.** It names only
+  `role` and `family_id`, so every new `profiles` column is self-writable by
+  default (`onboarded_at`, `push_enabled`/`email_enabled`, and now
+  `health_visibility`/`weight_unit` have all landed this way). Correct for all
+  five, but inverting it to an allow-list is the durable fix before a column
+  lands where self-write is wrong.
+- **`current_family_id()` has no `set search_path`** (it predates the
+  convention). Every policy that calls it directly runs it under the session
+  search_path.
+- **Hosted carries legacy default privileges granting new public-schema tables
+  to `anon`.** Confirmed by probe: `family_prizes` and `goal_activity_log`
+  ship no grants of their own yet are reachable by an anon PostgREST request
+  (RLS then returns `[]`). Harmless today since every policy resolves through
+  `auth.uid()`, but it means the explicit grants in
+  `20260815000000` are belt-and-braces rather than the thing making those
+  tables work.

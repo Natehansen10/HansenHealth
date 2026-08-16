@@ -38,8 +38,8 @@ export default async function FamilySettingsPage() {
   ]);
 
   return (
-    <div className="mx-auto max-w-lg px-4 py-8">
-      <h1 className="mb-6 text-2xl font-semibold text-foreground">
+    <div className="mx-auto max-w-lg px-4 py-6 sm:py-8">
+      <h1 className="mb-6 text-xl font-semibold text-foreground sm:text-2xl">
         Family settings
       </h1>
       <FamilyPrizesForm
