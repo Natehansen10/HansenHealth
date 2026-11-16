@@ -62,6 +62,13 @@ supabase/functions/  apply-goal-change, monthly-prize-calculation,
                   monthly-target-snapshot, notify-activity,
                   send-family-invite
 ```
+`acc556/` is a **separate** Next.js app for the ACC 556 class project: its own
+package.json, its own Supabase project ("ACC556 Final Project", 3NF schema in
+`acc556/sql/`), raw SQL via `postgres` on the server, no auth. None of the
+rules below about the production schema, RLS, or Edge Functions apply to it,
+and nothing in it may import from the production app or vice versa. It is
+excluded from the root `tsconfig.json` and `eslint.config.mjs`.
+
 `components/ui/` currently holds `alert`, `blueprint-corners`, `button`,
 `card`, `dialog`, `empty-state`, `field`, `line-chart`, `progress-bar`,
 `segmented-control`, `skeleton`.

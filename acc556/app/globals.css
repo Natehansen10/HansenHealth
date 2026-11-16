@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+/* Same palette as the production app: neutral grays plus one blue accent,
+   with green reserved for "won" / completed states. */
+:root {
+  --background: #f2f2f3;
+  --foreground: #1d1f20;
+  --muted: #5d5d60;
+  --surface: #ffffff;
+  --divider: color-mix(in srgb, #1d1f20 14%, transparent);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-surface: var(--surface);
+  --color-divider: var(--divider);
+
+  --color-accent-100: #eef6ff;
+  --color-accent-200: #d6ebff;
+  --color-accent-500: #749dc4;
+  --color-accent-600: #597ea3;
+  --color-accent-700: #416180;
+  --color-accent-800: #2c455d;
+  --color-accent-900: #1d2d3d;
+
+  --color-success-100: #e3f2e8;
+  --color-success-500: #3f8f5f;
+  --color-success-700: #2c6644;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
