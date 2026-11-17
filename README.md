@@ -1,3 +1,5 @@
+**Family Health Tracker:** a family exercise-goal game plus a private-by-default personal health log, built on Next.js and Supabase.
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
