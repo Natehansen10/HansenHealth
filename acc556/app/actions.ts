@@ -1,14 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type postgres from "postgres";
 import {
   PG_CHECK_VIOLATION,
   PG_UNIQUE_VIOLATION,
   pgErrorCode,
   sql,
 } from "@/lib/db";
-import { memberProgress, type Db } from "@/lib/queries";
+import { memberProgress } from "@/lib/queries";
 
 // Every write in the app. Each action re-checks its inputs on the server:
 // a Server Action can be called with any arguments, not only from the form
@@ -42,26 +41,6 @@ function fail(err: unknown): ActionState {
     ok: false,
     message: "Something went wrong saving that. Please try again.",
   };
-}
-
-// Opens a month: snapshot every active goal's weekly frequency into
-// goal_monthly_targets. The view then calculates each target from it.
-// ON CONFLICT DO NOTHING makes it safe to run more than once, and means an
-// existing snapshot is never rewritten when a goal changes later.
-// In the production app a scheduled job does this on the 1st; here the first
-// write of a new month does it.
-async function ensureMonthSnapshot(db: Db, month: string) {
-  const q = db as postgres.Sql;
-  await q`
-    INSERT INTO public.goal_monthly_targets (goal_id, month, frequency_per_week)
-    SELECT g.id, ${month}::date, g.frequency_per_week
-    FROM public.goals g
-    JOIN public.profiles p ON p.id = g.user_id
-    WHERE g.is_active
-      AND (g.created_at AT TIME ZONE p.timezone)::date
-          < (${month}::date + INTERVAL '1 month')::date
-    ON CONFLICT (goal_id, month) DO NOTHING
-  `;
 }
 
 // ------------------------------------------------------------
@@ -98,49 +77,34 @@ export async function logCheckin(
   }
 
   try {
-    await sql.begin(async (tx) => {
-      const [goal] = await tx<
-        {
-          is_active: boolean;
-          start_date: string;
-          today: string;
-          earliest: string;
-          month_locked: boolean;
-        }[]
-      >`
-        SELECT g.is_active,
-               (g.created_at AT TIME ZONE p.timezone)::date::text AS start_date,
-               (now() AT TIME ZONE p.timezone)::date::text AS today,
-               (date_trunc('month', now() AT TIME ZONE p.timezone)
-                  - INTERVAL '1 month')::date::text AS earliest,
-               EXISTS (SELECT 1 FROM public.monthly_prizes pr
-                       WHERE pr.family_id = p.family_id
-                         AND pr.month = date_trunc('month', ${date}::date)::date
-               ) AS month_locked
-        FROM public.goals g
-        JOIN public.profiles p ON p.id = g.user_id
-        WHERE g.id = ${goalId} AND g.user_id = ${memberId}
-      `;
-      if (!goal) throw new UserError("That goal doesn't belong to this member.");
-      if (!goal.is_active) throw new UserError("That goal is paused. Resume it first.");
-      if (date > goal.today) throw new UserError("You can't check in for a future date.");
-      if (date < goal.start_date) {
-        throw new UserError(`That's before the goal started (${goal.start_date}).`);
-      }
-      if (date < goal.earliest) {
-        throw new UserError("Check-ins can go back to the start of last month, no further.");
-      }
-      if (goal.month_locked) {
-        throw new UserError("That month's prize was already awarded, so it's closed.");
-      }
+    // Look up the goal and the member's "today" in one query.
+    const [goal] = await sql<
+      { start_date: string; end_date: string | null; today: string; yesterday: string }[]
+    >`
+      SELECT g.start_date::text,
+             g.end_date::text,
+             (now() AT TIME ZONE p.timezone)::date::text       AS today,
+             ((now() AT TIME ZONE p.timezone)::date - 1)::text AS yesterday
+      FROM public.goals g
+      JOIN public.profiles p ON p.id = g.user_id
+      WHERE g.id = ${goalId} AND g.user_id = ${memberId}
+    `;
+    if (!goal) return { ok: false, message: "That goal doesn't belong to this member." };
+    // One simple rule: you can log today, or catch up on yesterday.
+    if (date !== goal.today && date !== goal.yesterday) {
+      return { ok: false, message: "Check-ins can only be logged for today or yesterday." };
+    }
+    if (date < goal.start_date) {
+      return { ok: false, message: `That goal starts on ${goal.start_date}.` };
+    }
+    if (goal.end_date !== null && date > goal.end_date) {
+      return { ok: false, message: "That goal has ended." };
+    }
 
-      const month = `${date.slice(0, 7)}-01`;
-      await ensureMonthSnapshot(tx, month);
-      await tx`
-        INSERT INTO public.checkins (goal_id, checkin_date, note, duration_minutes)
-        VALUES (${goalId}, ${date}, ${note || null}, ${minutes})
-      `;
-    });
+    await sql`
+      INSERT INTO public.checkins (goal_id, checkin_date, note, duration_minutes)
+      VALUES (${goalId}, ${date}, ${note || null}, ${minutes})
+    `;
   } catch (err) {
     const code = pgErrorCode(err);
     if (code === PG_UNIQUE_VIOLATION) {
@@ -165,6 +129,7 @@ export async function deleteCheckin(
     return { ok: false, message: "Check-in not found." };
   }
   try {
+    // Same window as logging: only today's or yesterday's check-ins can be deleted.
     const rows = await sql`
       DELETE FROM public.checkins c
       USING public.goals g, public.profiles p
@@ -172,13 +137,11 @@ export async function deleteCheckin(
         AND g.id = c.goal_id
         AND g.user_id = ${memberId}
         AND p.id = g.user_id
-        AND NOT EXISTS (SELECT 1 FROM public.monthly_prizes pr
-                        WHERE pr.family_id = p.family_id
-                          AND pr.month = date_trunc('month', c.checkin_date)::date)
+        AND c.checkin_date >= (now() AT TIME ZONE p.timezone)::date - 1
       RETURNING c.id
     `;
     if (rows.length === 0) {
-      return { ok: false, message: "Can't delete: the month is closed or the check-in is gone." };
+      return { ok: false, message: "Only today's or yesterday's check-ins can be deleted." };
     }
   } catch (err) {
     return fail(err);
@@ -212,20 +175,16 @@ export async function createGoal(
   }
 
   try {
-    await sql.begin(async (tx) => {
-      const [member] = await tx<{ month: string }[]>`
-        SELECT date_trunc('month', now() AT TIME ZONE p.timezone)::date::text AS month
-        FROM public.profiles p
-        WHERE p.id = ${memberId}
-      `;
-      if (!member) throw new UserError("Member not found.");
-      await tx`
-        INSERT INTO public.goals (user_id, title, category, frequency_per_week, unit)
-        VALUES (${memberId}, ${title}, ${category || null}, ${frequency}, ${unit || null})
-      `;
-      // New goals count from the month they start, with a full-month target.
-      await ensureMonthSnapshot(tx, member.month);
-    });
+    // The goal starts counting today, in the member's own timezone.
+    const rows = await sql`
+      INSERT INTO public.goals (user_id, title, category, frequency_per_week, unit, start_date)
+      SELECT p.id, ${title}, ${category || null}, ${frequency}, ${unit || null},
+             (now() AT TIME ZONE p.timezone)::date
+      FROM public.profiles p
+      WHERE p.id = ${memberId}
+      RETURNING id
+    `;
+    if (rows.length === 0) return { ok: false, message: "Member not found." };
   } catch (err) {
     return fail(err);
   }
@@ -233,7 +192,10 @@ export async function createGoal(
   return { ok: true, message: `Added "${title}".` };
 }
 
-export async function toggleGoal(
+// Ending a goal sets end_date to today. It still counts for this month (and
+// every earlier month), so history stays the same. There is no "resume":
+// to change a goal, end it and add a new one.
+export async function endGoal(
   memberId: string,
   goalId: string,
   _prev: ActionState,
@@ -241,28 +203,51 @@ export async function toggleGoal(
   if (!UUID_RE.test(memberId) || !UUID_RE.test(goalId)) {
     return { ok: false, message: "Goal not found." };
   }
-  let nowActive = false;
   try {
-    await sql.begin(async (tx) => {
-      const [goal] = await tx<{ is_active: boolean; month: string }[]>`
-        UPDATE public.goals g
-        SET is_active = NOT g.is_active
-        FROM public.profiles p
-        WHERE g.id = ${goalId}
-          AND g.user_id = ${memberId}
-          AND p.id = g.user_id
-        RETURNING g.is_active,
-                  date_trunc('month', now() AT TIME ZONE p.timezone)::date::text AS month
-      `;
-      if (!goal) throw new UserError("Goal not found.");
-      nowActive = goal.is_active;
-      if (goal.is_active) await ensureMonthSnapshot(tx, goal.month);
-    });
+    const rows = await sql`
+      UPDATE public.goals g
+      SET end_date = GREATEST((now() AT TIME ZONE p.timezone)::date, g.start_date)
+      FROM public.profiles p
+      WHERE g.id = ${goalId}
+        AND g.user_id = ${memberId}
+        AND p.id = g.user_id
+        AND g.end_date IS NULL
+      RETURNING g.id
+    `;
+    if (rows.length === 0) return { ok: false, message: "That goal has already ended." };
   } catch (err) {
     return fail(err);
   }
   revalidatePath("/", "layout");
-  return { ok: true, message: nowActive ? "Goal resumed." : "Goal paused." };
+  return { ok: true, message: "Goal ended." };
+}
+
+// A goal with no check-ins can be deleted outright (for example, one added by
+// mistake). A goal with check-ins can only be ended, so its history stays.
+export async function deleteGoal(
+  memberId: string,
+  goalId: string,
+  _prev: ActionState,
+): Promise<ActionState> {
+  if (!UUID_RE.test(memberId) || !UUID_RE.test(goalId)) {
+    return { ok: false, message: "Goal not found." };
+  }
+  try {
+    const rows = await sql`
+      DELETE FROM public.goals g
+      WHERE g.id = ${goalId}
+        AND g.user_id = ${memberId}
+        AND NOT EXISTS (SELECT 1 FROM public.checkins c WHERE c.goal_id = g.id)
+      RETURNING g.id
+    `;
+    if (rows.length === 0) {
+      return { ok: false, message: "Goals with check-ins can't be deleted. End it instead." };
+    }
+  } catch (err) {
+    return fail(err);
+  }
+  revalidatePath("/", "layout");
+  return { ok: true, message: "Goal deleted." };
 }
 
 // ------------------------------------------------------------

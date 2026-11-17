@@ -199,8 +199,9 @@ export default async function LeaderboardPage({
         <SectionTitle>How this is calculated</SectionTitle>
         <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
           <li>
-            Monthly target = weekly frequency × days in the month ÷ 7, rounded.
-            The view <code>v_goal_monthly_targets</code> calculates it.
+            Monthly target = times per week × days in the month ÷ 7, rounded.
+            The view <code>v_goal_monthly_targets</code>{" "}
+            calculates it from each goal&apos;s start and end dates.
           </li>
           <li>
             Completion = check-ins that month ÷ target, added up across all of

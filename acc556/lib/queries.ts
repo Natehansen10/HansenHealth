@@ -66,12 +66,12 @@ export async function getFamilies(): Promise<Family[]> {
   `;
 }
 
-// Months that have at least one target row, newest first.
+// Months in which at least one goal was running, newest first.
 export async function getMonths(): Promise<string[]> {
   await connection();
   const rows = await sql<{ month: string }[]>`
     SELECT DISTINCT month::text AS month
-    FROM public.goal_monthly_targets
+    FROM public.v_goal_monthly_targets
     ORDER BY month DESC
   `;
   return rows.map((r) => r.month);
@@ -226,7 +226,7 @@ export async function getMembers(): Promise<MemberListRow[]> {
            p.role,
            f.name AS family_name,
            (SELECT COUNT(*) FROM public.goals g
-             WHERE g.user_id = p.id AND g.is_active)::int AS active_goals,
+             WHERE g.user_id = p.id AND g.end_date IS NULL)::int AS active_goals,
            (SELECT COUNT(*) FROM public.checkins c
              JOIN public.goals g ON g.id = c.goal_id
              WHERE g.user_id = p.id)::int AS total_checkins,
@@ -249,6 +249,7 @@ export type Member = {
   family_id: string | null;
   family_name: string | null;
   today: string;
+  yesterday: string;
 };
 
 export async function getMember(id: string): Promise<Member | undefined> {
@@ -261,7 +262,8 @@ export async function getMember(id: string): Promise<Member | undefined> {
            f.id   AS family_id,
            f.name AS family_name,
            -- "today" in the member's own timezone, not the server's
-           (now() AT TIME ZONE p.timezone)::date::text AS today
+           (now() AT TIME ZONE p.timezone)::date::text AS today,
+           ((now() AT TIME ZONE p.timezone)::date - 1)::text AS yesterday
     FROM public.profiles p
     LEFT JOIN public.families f ON f.id = p.family_id
     WHERE p.id = ${id}
@@ -275,11 +277,11 @@ export type MemberGoal = {
   category: string | null;
   unit: string | null;
   frequency_per_week: number;
-  is_active: boolean;
   start_date: string;
+  end_date: string | null;
   month_target: number | null;
-  month_frequency: number | null;
   month_checkins: number;
+  total_checkins: number;
 };
 
 export async function getMemberGoals(
@@ -293,21 +295,20 @@ export async function getMemberGoals(
            g.category,
            g.unit,
            g.frequency_per_week,
-           g.is_active,
-           (g.created_at AT TIME ZONE p.timezone)::date::text AS start_date,
-           t.target             AS month_target,
-           t.frequency_per_week AS month_frequency,
+           g.start_date::text,
+           g.end_date::text,
+           t.target AS month_target,
            (SELECT COUNT(*) FROM public.checkins c
              WHERE c.goal_id = g.id
                AND c.checkin_date >= ${month}::date
                AND c.checkin_date <  (${month}::date + INTERVAL '1 month')::date
-           )::int AS month_checkins
+           )::int AS month_checkins,
+           (SELECT COUNT(*) FROM public.checkins c WHERE c.goal_id = g.id)::int AS total_checkins
     FROM public.goals g
-    JOIN public.profiles p ON p.id = g.user_id
     LEFT JOIN public.v_goal_monthly_targets t
            ON t.goal_id = g.id AND t.month = ${month}
     WHERE g.user_id = ${memberId}
-    ORDER BY g.is_active DESC, g.created_at
+    ORDER BY (g.end_date IS NULL) DESC, g.start_date, g.created_at
   `;
 }
 
@@ -317,11 +318,10 @@ export type MemberCheckin = {
   note: string | null;
   duration_minutes: number | null;
   goal_title: string;
-  locked: boolean;
+  can_delete: boolean;
 };
 
-// A check-in is locked once its month's prize has been awarded to the family,
-// so the result can't be changed after the fact.
+// Only today's and yesterday's check-ins can be deleted (same window as logging).
 export async function getMemberCheckins(
   memberId: string,
   limit = 30,
@@ -333,9 +333,7 @@ export async function getMemberCheckins(
            c.note,
            c.duration_minutes,
            g.title AS goal_title,
-           EXISTS (SELECT 1 FROM public.monthly_prizes pr
-                   WHERE pr.family_id = p.family_id
-                     AND pr.month = date_trunc('month', c.checkin_date)::date) AS locked
+           c.checkin_date >= (now() AT TIME ZONE p.timezone)::date - 1 AS can_delete
     FROM public.checkins c
     JOIN public.goals g    ON g.id = c.goal_id
     JOIN public.profiles p ON p.id = g.user_id

@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 import {
   createGoal,
   deleteCheckin,
+  deleteGoal,
+  endGoal,
   logCheckin,
-  toggleGoal,
 } from "@/app/actions";
 import { ActionButton, CheckinForm, GoalForm } from "@/components/forms";
 import {
@@ -49,7 +50,7 @@ export default async function MemberPage({
     getMemberCheckins(id),
     getMemberPrizeMonths(id),
   ]);
-  const activeGoals = goals.filter((g) => g.is_active);
+  const activeGoals = goals.filter((g) => g.end_date === null);
   const tracked = goals.filter((g) => g.month_target !== null);
   const monthTarget = tracked.reduce((s, g) => s + (g.month_target ?? 0), 0);
   const monthDone = tracked.reduce((s, g) => s + g.month_checkins, 0);
@@ -98,6 +99,7 @@ export default async function MemberPage({
               action={logCheckin.bind(null, member.id)}
               goals={activeGoals.map((g) => ({ id: g.id, title: g.title }))}
               today={member.today}
+              yesterday={member.yesterday}
             />
           )}
         </Card>
@@ -134,22 +136,32 @@ export default async function MemberPage({
                       <div className="min-w-0">
                         <p className="font-medium">
                           {g.title}
-                          {!g.is_active && (
+                          {g.end_date !== null && (
                             <span className="ml-2 rounded-full bg-neutral-200 px-2 py-0.5 text-xs text-muted">
-                              Paused
+                              Ended {formatDay(g.end_date)}
                             </span>
                           )}
                         </p>
                         <p className="text-xs text-muted">
-                          {g.category ?? "No category"} · now {g.frequency_per_week}×/week
+                          {g.category ?? "No category"} · {g.frequency_per_week}×/week
                           {g.unit && ` · ${g.unit}`} · since {formatDay(g.start_date)}
                         </p>
                       </div>
-                      <ActionButton
-                        action={toggleGoal.bind(null, member.id, g.id)}
-                        label={g.is_active ? "Pause" : "Resume"}
-                        pendingLabel="Saving…"
-                      />
+                      {g.total_checkins === 0 ? (
+                        <ActionButton
+                          action={deleteGoal.bind(null, member.id, g.id)}
+                          label="Delete"
+                          pendingLabel="Deleting…"
+                          confirm="Delete this goal? It has no check-ins yet."
+                        />
+                      ) : g.end_date === null && (
+                        <ActionButton
+                          action={endGoal.bind(null, member.id, g.id)}
+                          label="End goal"
+                          pendingLabel="Ending…"
+                          confirm="End this goal? It still counts for this month and earlier. To change how often, end it and add a new goal."
+                        />
+                      )}
                     </div>
                     {g.month_target === null ? (
                       <p className="text-xs text-muted">
@@ -159,8 +171,7 @@ export default async function MemberPage({
                       <>
                         <ProgressBar value={p} />
                         <p className="text-xs text-muted tabular-nums">
-                          {g.month_checkins} of {g.month_target} (
-                          {g.month_frequency}×/week that month)
+                          {g.month_checkins} of {g.month_target} check-ins
                         </p>
                       </>
                     )}
@@ -193,11 +204,7 @@ export default async function MemberPage({
                   </p>
                   {c.note && <p className="truncate text-xs text-muted">{c.note}</p>}
                 </div>
-                {c.locked ? (
-                  <span className="shrink-0 text-xs text-muted" title="This month's prize has been awarded">
-                    Closed
-                  </span>
-                ) : (
+                {c.can_delete && (
                   <ActionButton
                     action={deleteCheckin.bind(null, member.id, c.id)}
                     label="Delete"
@@ -212,7 +219,7 @@ export default async function MemberPage({
       </Card>
 
       <Card>
-        <SectionTitle hint="Counts from this month, with a full-month target">
+        <SectionTitle hint="Counts from this month. Times per week can't be changed later.">
           Add a goal
         </SectionTitle>
         <GoalForm action={createGoal.bind(null, member.id)} />

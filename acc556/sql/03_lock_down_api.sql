@@ -14,12 +14,11 @@
 ALTER TABLE public.families              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.goals                 ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.goal_monthly_targets  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.checkins              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.monthly_prizes        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.monthly_prize_winners ENABLE ROW LEVEL SECURITY;
 
-REVOKE ALL ON public.families, public.profiles, public.goals, public.goal_monthly_targets,
+REVOKE ALL ON public.families, public.profiles, public.goals,
               public.checkins, public.monthly_prizes, public.monthly_prize_winners,
               public.v_goal_monthly_targets
 FROM anon, authenticated;
@@ -31,6 +30,6 @@ SELECT c.relname AS table_name,
 FROM pg_class c
 JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE n.nspname = 'public'
-  AND c.relname IN ('families', 'profiles', 'goals', 'goal_monthly_targets', 'checkins',
+  AND c.relname IN ('families', 'profiles', 'goals', 'checkins',
                     'monthly_prizes', 'monthly_prize_winners', 'v_goal_monthly_targets')
 ORDER BY c.relname;

@@ -20,10 +20,12 @@ export function CheckinForm({
   action,
   goals,
   today,
+  yesterday,
 }: {
   action: FormAction;
   goals: { id: string; title: string }[];
   today: string;
+  yesterday: string;
 }) {
   const [state, formAction, pending] = useActionState(action, null);
   const ref = useResetOnSuccess(state);
@@ -44,11 +46,14 @@ export function CheckinForm({
         </select>
       </label>
       <label className="grid gap-1 text-sm">
-        <span className="font-medium">Date</span>
+        <span className="font-medium">
+          Date <span className="font-normal text-muted">(today or yesterday)</span>
+        </span>
         <input
           type="date"
           name="checkin_date"
           required
+          min={yesterday}
           max={today}
           defaultValue={today}
           className={inputClass}
@@ -142,7 +147,7 @@ export function GoalForm({ action }: { action: FormAction }) {
   );
 }
 
-// A single-button form (delete, pause, award). Shows its own error inline.
+// A single-button form (delete, end goal, award). Shows its own error inline.
 export function ActionButton({
   action,
   label,
