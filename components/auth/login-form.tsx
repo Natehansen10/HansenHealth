@@ -5,6 +5,13 @@ import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { BlueprintCorners } from "@/components/ui/blueprint-corners";
 import { Button } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
+
+// Shared frame for both states (form + "check your email") so the card
+// doesn't change size when the link is sent. The Suspense fallback in
+// app/(auth)/login/page.tsx mirrors these classes.
+const CARD_CLASSES =
+  "blueprint w-full max-w-sm border border-divider bg-neutral-100 p-8 shadow-md";
 
 const CALLBACK_ERRORS: Record<string, string> = {
   link_expired:
@@ -56,16 +63,16 @@ export function LoginForm() {
 
   if (status === "sent") {
     return (
-      <div className="blueprint w-full max-w-sm border border-divider bg-transparent p-6">
+      <div className={CARD_CLASSES}>
         <BlueprintCorners />
-        <h1 className="mb-2 text-xl text-foreground">Check your email</h1>
+        <h2 className="mb-2 text-2xl text-foreground">Check your email</h2>
         <p className="mb-4 text-sm text-muted">
           We sent a sign-in link to{" "}
           <span className="text-foreground">{sentTo}</span>. Open it on this
           device to finish signing in.
         </p>
         <p className="mb-5 text-sm text-muted">
-          Nothing after a minute? Check your spam or junk folder — the link
+          Nothing after a minute? Check your spam or junk folder. The link
           sometimes lands there.
         </p>
         <div className="flex flex-col gap-2">
@@ -99,19 +106,19 @@ export function LoginForm() {
         e.preventDefault();
         sendLink(email);
       }}
-      className="blueprint w-full max-w-sm border border-divider bg-transparent p-6"
+      className={CARD_CLASSES}
     >
       <BlueprintCorners />
-      <h1 className="mb-1 text-xl text-foreground">Hansen Health</h1>
-      <p className="mb-5 text-sm text-muted">
-        Track exercise goals together as a family.
+      <h2 className="mb-1 text-2xl text-foreground">Sign in</h2>
+      <p className="mb-6 text-sm text-muted">
+        No password needed. We&apos;ll email you a one-time sign-in link.
       </p>
 
       {callbackError && (
-        <p className="mb-4 border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+        <Alert className="mb-4">
           {CALLBACK_ERRORS[callbackError] ??
             "We couldn't sign you in. Request a new link below."}
-        </p>
+        </Alert>
       )}
 
       <label htmlFor="email" className="mb-1 block text-sm text-muted">
@@ -124,23 +131,19 @@ export function LoginForm() {
         autoComplete="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        className="input mb-2 w-full"
+        className="input mb-5 w-full"
         placeholder="you@example.com"
       />
-      <p className="mb-4 text-sm text-muted">
-        We&apos;ll email you a link that signs you in — no password to
-        remember.
-      </p>
 
       <Button type="submit" disabled={status === "sending"} className="w-full">
         {status === "sending" ? "Sending..." : "Email me a sign-in link"}
       </Button>
 
       {status === "error" && (
-        <p className="mt-3 text-sm text-red-600">
+        <Alert className="mt-4">
           Something went wrong sending that link. Check your connection and try
           again.
-        </p>
+        </Alert>
       )}
     </form>
   );

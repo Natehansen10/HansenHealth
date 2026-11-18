@@ -113,6 +113,22 @@ h1, h2, h3, h4, h5, h6 {
 .blueprint > .corner.bl { bottom: -6px; left: -6px; }
 .blueprint > .corner.br { bottom: -6px; right: -6px; }
 
+/* Corner marks for a .blueprint frame sitting on the dark accent-900 brand
+   panel (/login), where the default foreground-tinted marks disappear. */
+.blueprint-inverse > .corner {
+  color: color-mix(in srgb, var(--color-accent-300) 70%, transparent);
+}
+
+/* Drafting-grid background for dark brand surfaces. Hairline lines at a
+   32px pitch, faint enough that text over it stays readable. */
+.grid-lines {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, #ffffff 6%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, #ffffff 6%, transparent) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: -1px -1px;
+}
+
 /* Muted/secondary text -- replaces ad-hoc zinc-500/zinc-400 usage. Matches
    the color-mix treatment already used for .blueprint > .corner. */
 .text-muted {
